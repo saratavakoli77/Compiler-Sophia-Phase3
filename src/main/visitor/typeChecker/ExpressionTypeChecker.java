@@ -1,6 +1,7 @@
 package main.visitor.typeChecker;
 
 import main.ast.nodes.expression.*;
+import main.ast.nodes.expression.operators.UnaryOperator;
 import main.ast.nodes.expression.values.ListValue;
 import main.ast.nodes.expression.values.NullValue;
 import main.ast.nodes.expression.values.primitive.BoolValue;
@@ -17,14 +18,14 @@ import main.ast.types.single.IntType;
 import main.ast.types.single.StringType;
 import main.ast.types.NullType;
 import main.ast.nodes.expression.operators.BinaryOperator;
-import main.compileErrorException.typeErrors.UnsupportedOperandType;
-import main.compileErrorException.typeErrors.VarNotDeclared;
-import main.compileErrorException.typeErrors.LeftSideNotLvalue;
+import main.compileErrorException.typeErrors.*;
 import main.symbolTable.items.LocalVariableSymbolTableItem;
 import main.symbolTable.SymbolTable;
 import main.symbolTable.exceptions.ItemNotFoundException;
 import main.symbolTable.utils.graph.Graph;
 import main.visitor.Visitor;
+
+import java.util.ArrayList;
 
 
 public class ExpressionTypeChecker extends Visitor<Type> {
@@ -108,6 +109,17 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                lhs instanceof ListAccessByIndex;
     }
 
+    public boolean isAllElementsHaveSameType(ListType list) {
+        ArrayList<ListNameType> elementNameTypes = list.getElementsTypes();
+        Type firstElementType = elementNameTypes.get(0).getType();
+        for (ListNameType nameType: elementNameTypes) {
+            if (!firstElementType.toString().equals(nameType.getType().toString())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public Type visit(BinaryExpression binaryExpression) {
         Expression firstOperand = binaryExpression.getFirstOperand();
@@ -170,7 +182,46 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(UnaryExpression unaryExpression) {
-        //TODO
+        Expression operand = unaryExpression.getOperand();
+        Type operandType = operand.accept(this);
+        UnaryOperator unaryOperator = unaryExpression.getOperator();
+
+        if (
+                unaryOperator == UnaryOperator.postinc ||
+                unaryOperator == UnaryOperator.preinc  ||
+                unaryOperator == UnaryOperator.postdec ||
+                unaryOperator == UnaryOperator.predec
+        ) {
+            if (isSubtype(operandType, new IntType()) && isValidLHS(operand)) {
+                return new IntType();
+            } else if (!isSubtype(operandType, new IntType())) {
+                unaryExpression.addError(new UnsupportedOperandType(unaryExpression.getLine(), unaryOperator.name()));
+                return new NoType();
+            } else {
+                unaryExpression.addError(new IncDecOperandNotLvalue(unaryExpression.getLine(), unaryOperator.name()));
+                return new NoType();
+            }
+        }
+
+        if (unaryOperator == UnaryOperator.minus) {
+            if (isSubtype(operandType, new IntType())) {
+                return new IntType();
+            } else {
+                unaryExpression.addError(new UnsupportedOperandType(unaryExpression.getLine(), unaryOperator.name()));
+                return new NoType();
+            }
+        }
+
+        if (
+                unaryOperator == UnaryOperator.not
+        ) {
+            if (isSubtype(operandType, new BoolType())) {
+                return new BoolType();
+            } else {
+                unaryExpression.addError(new UnsupportedOperandType(unaryExpression.getLine(), unaryOperator.name()));
+                return new NoType();
+            }
+        }
         return null;
     }
 
@@ -194,7 +245,40 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(ListAccessByIndex listAccessByIndex) {
-        //TODO
+        Expression instance = listAccessByIndex.getInstance();
+        Type instanceType = instance.accept(this);
+        boolean isInstanceCorrect = true;
+
+        if (instanceType instanceof NoType) {
+            isInstanceCorrect = false;
+        }
+
+        if (isInstanceCorrect && !(instanceType instanceof ListType)) {
+            listAccessByIndex.addError(new ListAccessByIndexOnNoneList(listAccessByIndex.getLine()));
+            isInstanceCorrect = false;
+        }
+
+        Expression index = listAccessByIndex.getIndex();
+        Type indexType = index.accept(this);
+// a: {string, int, bool}
+// a["hello"]
+        assert instanceType instanceof ListType;
+        if (!isAllElementsHaveSameType((ListType) instanceType)) {
+            if (!(index instanceof IntValue)) {
+                listAccessByIndex.addError(new CantUseExprAsIndexOfMultiTypeList(listAccessByIndex.getLine()));
+            } else {
+//                return getListAccessByIndexType((ListType) instanceType, index);
+            }
+        }
+
+        if (!isSubtype(indexType, new IntType())) {
+            listAccessByIndex.addError(new ListIndexNotInt(listAccessByIndex.getLine()));
+        }
+
+        //khoshhalim:
+//        return getListAccessByIndexType((ListType) instanceType, index);
+
+
         return null;
     }
 
