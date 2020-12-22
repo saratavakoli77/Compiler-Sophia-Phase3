@@ -8,6 +8,9 @@ import main.ast.nodes.expression.values.primitive.IntValue;
 import main.ast.nodes.expression.values.primitive.StringValue;
 import main.ast.types.NoType;
 import main.ast.types.Type;
+import main.ast.types.functionPointer.FptrType;
+import main.ast.types.list.ListNameType;
+import main.ast.types.list.ListType;
 import main.ast.types.single.BoolType;
 import main.ast.types.single.ClassType;
 import main.ast.types.single.IntType;
@@ -16,6 +19,7 @@ import main.ast.types.NullType;
 import main.ast.nodes.expression.operators.BinaryOperator;
 import main.compileErrorException.typeErrors.UnsupportedOperandType;
 import main.compileErrorException.typeErrors.VarNotDeclared;
+import main.compileErrorException.typeErrors.LeftSideNotLvalue;
 import main.symbolTable.items.LocalVariableSymbolTableItem;
 import main.symbolTable.SymbolTable;
 import main.symbolTable.exceptions.ItemNotFoundException;
@@ -38,8 +42,70 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             return true;
         }
 
+        if (subType instanceof BoolType && superType instanceof BoolType) {
+            return true;
+        }
         return false;
         //todo: add others
+    }
+
+    public boolean isEqualitySupported(Type firstOperand, Type secondOperand) {
+        if (firstOperand instanceof ListType || secondOperand instanceof ListType) {
+            return false;
+        }
+        if (firstOperand.toString().equals(secondOperand.toString())) {
+            return true;
+        }
+
+        if (firstOperand instanceof NoType || secondOperand instanceof NoType) {
+            return true;
+        }
+
+        if (
+                (
+                        firstOperand instanceof NullType &&
+                        (secondOperand instanceof ClassType || secondOperand instanceof FptrType)
+                ) ||
+                (
+                        secondOperand instanceof NullType &&
+                        (firstOperand instanceof ClassType || firstOperand instanceof FptrType)
+                )
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+//    public boolean isAssignmentSupported(Type firstOperand, Type secondOperand) {
+//        if (firstOperand.toString().equals(secondOperand.toString())) {
+//            return true;
+//        }
+//
+//        if (firstOperand instanceof NoType || secondOperand instanceof NoType) {
+//            return true;
+//        }
+//
+//        if (
+//                (
+//                        firstOperand instanceof NullType &&
+//                                (secondOperand instanceof ClassType || secondOperand instanceof FptrType)
+//                ) ||
+//                        (
+//                                secondOperand instanceof NullType &&
+//                                        (firstOperand instanceof ClassType || firstOperand instanceof FptrType)
+//                        )
+//        ) {
+//            return true;
+//        }
+//
+//        return false;
+//    }
+
+    public boolean isValidLHS(Expression lhs) {
+        return lhs instanceof Identifier ||
+               lhs instanceof ObjectOrListMemberAccess ||
+               lhs instanceof ListAccessByIndex;
     }
 
     @Override
@@ -59,7 +125,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 binaryOperator == BinaryOperator.lt ||
                 binaryOperator == BinaryOperator.gt
         ) {
-            if (isSubtype(firstOperandType, new IntType()) && isSubtype(secondOperandType, new IntType())) { // todo: what is going on
+            if (isSubtype(firstOperandType, new IntType()) && isSubtype(secondOperandType, new IntType())) {
                 return new IntType();
             } else {
                 binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
@@ -67,7 +133,37 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             }
         }
 
-        // todo: baghiash
+        if (
+                binaryOperator == BinaryOperator.or ||
+                binaryOperator == BinaryOperator.and
+        ) {
+            if (isSubtype(firstOperandType, new BoolType()) && isSubtype(secondOperandType, new BoolType())) {
+                return new BoolType();
+            } else {
+                binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
+                return new NoType();
+            }
+        }
+
+        if (
+                binaryOperator == BinaryOperator.eq ||
+                binaryOperator == BinaryOperator.neq
+        ) {
+            if (isEqualitySupported(firstOperandType, secondOperandType)) {
+                return new BoolType();
+            } else {
+                binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
+                return new NoType();
+            }
+        }
+
+        if (
+                binaryOperator == BinaryOperator.assign
+        ) {
+            if (!isValidLHS(firstOperand)) {
+                binaryExpression.addError(new LeftSideNotLvalue(binaryExpression.getLine()));
+            } //todo: complete
+        }
 
         return null;
     }
