@@ -1,5 +1,6 @@
 package main.visitor.typeChecker;
 
+import main.ast.nodes.declaration.classDec.classMembersDec.MethodDeclaration;
 import main.ast.nodes.expression.*;
 import main.ast.nodes.expression.operators.UnaryOperator;
 import main.ast.nodes.expression.values.ListValue;
@@ -19,9 +20,11 @@ import main.ast.types.single.StringType;
 import main.ast.types.NullType;
 import main.ast.nodes.expression.operators.BinaryOperator;
 import main.compileErrorException.typeErrors.*;
+import main.symbolTable.items.ClassSymbolTableItem;
 import main.symbolTable.items.LocalVariableSymbolTableItem;
 import main.symbolTable.SymbolTable;
 import main.symbolTable.exceptions.ItemNotFoundException;
+import main.symbolTable.items.MethodSymbolTableItem;
 import main.symbolTable.utils.graph.Graph;
 import main.visitor.Visitor;
 
@@ -118,6 +121,16 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             }
         }
         return true;
+    }
+
+    public Type findListElementTypeByIndex(ListType list, Expression index, boolean isSingleType) {
+        ArrayList<ListNameType> elementNameTypes = list.getElementsTypes();
+        if (isSingleType) {
+            return elementNameTypes.get(0).getType();
+        } else {
+            int indexNumber = ((IntValue) index).getConstant();
+            return elementNameTypes.get(indexNumber).getType();
+        }
     }
 
     @Override
@@ -260,31 +273,60 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
         Expression index = listAccessByIndex.getIndex();
         Type indexType = index.accept(this);
-// a: {string, int, bool}
-// a["hello"]
-        assert instanceType instanceof ListType;
-        if (!isAllElementsHaveSameType((ListType) instanceType)) {
-            if (!(index instanceof IntValue)) {
-                listAccessByIndex.addError(new CantUseExprAsIndexOfMultiTypeList(listAccessByIndex.getLine()));
-            } else {
-//                return getListAccessByIndexType((ListType) instanceType, index);
-            }
-        }
+
+        boolean isIndexCorrect = true;
 
         if (!isSubtype(indexType, new IntType())) {
+            isIndexCorrect = false;
             listAccessByIndex.addError(new ListIndexNotInt(listAccessByIndex.getLine()));
         }
 
-        //khoshhalim:
-//        return getListAccessByIndexType((ListType) instanceType, index);
+        boolean isListSingleType = true;
 
+        if (isInstanceCorrect) {
+            isListSingleType = isAllElementsHaveSameType((ListType) instanceType);
+            if (!isListSingleType) {
+                if (!(index instanceof IntValue)) {
+                    listAccessByIndex.addError(new CantUseExprAsIndexOfMultiTypeList(listAccessByIndex.getLine()));
+                    isIndexCorrect = false;
+                }
+            }
+        }
 
-        return null;
+        if (isInstanceCorrect && isIndexCorrect) {
+            return findListElementTypeByIndex((ListType) instanceType, index, isListSingleType);
+        } else {
+            return new NoType();
+        }
+
     }
 
     @Override
     public Type visit(MethodCall methodCall) {
-        //TODO
+        Expression instance = methodCall.getInstance();
+        //amir setline karde. nemidunam chera. khate 560 codesh
+        Type instanceType = instance.accept(this);
+
+        if (instanceType instanceof NoType) {
+            return new NoType();
+        }
+
+        MethodDeclaration methodDeclaration = null;
+        if (instanceType instanceof ClassType) {
+            ClassType instanceClass = (ClassType) instanceType;
+            Identifier classId = instanceClass.getClassName();
+            String className = classId.getName();
+            boolean isClassWithThisNameExist = classHierarchy.doesGraphContainNode(className);
+            if (isClassWithThisNameExist) {
+                //nemidunam searchCurrent bayad true bashe ya chi
+                MethodSymbolTableItem methodSymbolTableItem = (MethodSymbolTableItem) (((ClassSymbolTableItem) SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + className, true)).getClassSymbolTable().get(ClassSymbolTableItem.START_KEY + handlerName));
+            }
+        }
+//        if (instance instanceof Identifier) {
+//            Identifier classId = (Identifier) instance;
+//
+//            String className =
+//        }
         return null;
     }
 
