@@ -17,8 +17,14 @@ import main.ast.nodes.statement.loop.BreakStmt;
 import main.ast.nodes.statement.loop.ContinueStmt;
 import main.ast.nodes.statement.loop.ForStmt;
 import main.ast.nodes.statement.loop.ForeachStmt;
+import main.ast.types.single.ClassType;
+import main.symbolTable.SymbolTable;
 
 public class Visitor<T> implements IVisitor<T> {
+
+    public static SymbolTable currentSymbolTable;
+
+    public static ClassDeclaration currentClassDeclaration;
 
     @Override
     public T visit(Program program) {
