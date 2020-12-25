@@ -11,8 +11,15 @@ import main.ast.nodes.statement.loop.BreakStmt;
 import main.ast.nodes.statement.loop.ContinueStmt;
 import main.ast.nodes.statement.loop.ForStmt;
 import main.ast.nodes.statement.loop.ForeachStmt;
+import main.symbolTable.SymbolTable;
+import main.symbolTable.exceptions.ItemNotFoundException;
+import main.symbolTable.items.ClassSymbolTableItem;
+import main.symbolTable.items.MethodSymbolTableItem;
+import main.symbolTable.items.SymbolTableItem;
 import main.symbolTable.utils.graph.Graph;
 import main.visitor.Visitor;
+
+import java.util.Map;
 
 public class TypeChecker extends Visitor<Void> {
     private final Graph<String> classHierarchy;
@@ -21,6 +28,28 @@ public class TypeChecker extends Visitor<Void> {
     public TypeChecker(Graph<String> classHierarchy) {
         this.classHierarchy = classHierarchy;
         this.expressionTypeChecker = new ExpressionTypeChecker(classHierarchy);
+
+//        SymbolTable.top = new SymbolTable();
+//        Map<String, SymbolTableItem> items = SymbolTable.root.items;
+//        for (Map.Entry<String, SymbolTableItem> entry : items.entrySet()) {
+//            System.out.println(entry.getKey() + ":" + entry.getValue().getName());
+//        }
+////         SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + "A").getClass();
+//
+//        ClassSymbolTableItem classSymbolTableItem = null;
+//        try {
+//            classSymbolTableItem = (ClassSymbolTableItem) SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + "A", true);
+//        } catch (ItemNotFoundException e) {
+//            System.out.println("class niiiiist");
+//        }
+//        SymbolTable classSymbolTable;
+//        classSymbolTable = classSymbolTableItem.getClassSymbolTable();
+//        try {
+//            System.out.println((classSymbolTable.getItem(MethodSymbolTableItem.START_KEY + "A2", true)).getName());
+//
+//        } catch (ItemNotFoundException e) {
+//            System.out.println("method niiiiist");
+//        }
     }
 
     @Override

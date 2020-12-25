@@ -21,6 +21,7 @@ import main.ast.types.NullType;
 import main.ast.nodes.expression.operators.BinaryOperator;
 import main.compileErrorException.typeErrors.*;
 import main.symbolTable.items.ClassSymbolTableItem;
+import main.symbolTable.items.FieldSymbolTableItem;
 import main.symbolTable.items.LocalVariableSymbolTableItem;
 import main.symbolTable.SymbolTable;
 import main.symbolTable.exceptions.ItemNotFoundException;
@@ -139,7 +140,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         Expression secondOperand = binaryExpression.getSecondOperand();
         Type firstOperandType = firstOperand.accept(this);
         Type secondOperandType = secondOperand.accept(this);
-
+// a.b() // a.b + c
         BinaryOperator binaryOperator = binaryExpression.getBinaryOperator();
         if (
                 binaryOperator == BinaryOperator.add ||
@@ -240,21 +241,65 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(ObjectOrListMemberAccess objectOrListMemberAccess) {
-        //TODO
+        Expression instance = objectOrListMemberAccess.getInstance();
+        Type instanceType = instance.accept(this);
+
+        Expression memberName = objectOrListMemberAccess.getMemberName();
+//        Type memberNameType = memberName.accept(this);
+        //a.b.c // a = b;
+        if (instanceType instanceof ClassType) {
+            Identifier classId = ((ClassType) instanceType).getClassName();
+            try {
+                ClassSymbolTableItem classSymbolTableItem = (ClassSymbolTableItem) SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + classId.getName(), true);
+                SymbolTable classSymbolTable;
+                classSymbolTable = classSymbolTableItem.getClassSymbolTable();
+
+                // Changing top of SymbolTable to current instance SymbolTable
+                SymbolTable.top = classSymbolTable;
+                Type memberNameType = memberName.accept(this);
+//                classSymbolTable.getItem(MethodSymbolTableItem.START_KEY + )
+            } catch (ItemNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (instanceType instanceof NoType) {
+
+        }
         return null;
     }
 
     @Override
     public Type visit(Identifier identifier) {
-        String searchVal = LocalVariableSymbolTableItem.START_KEY + identifier.getName();
-        try {
-            LocalVariableSymbolTableItem getItem = (LocalVariableSymbolTableItem) SymbolTable.top.getItem(searchVal, true);
-            return getItem.getType();
-        } catch (ItemNotFoundException exp) {
-            identifier.addError(new VarNotDeclared(identifier.getLine(), identifier.getName()));
-            return new NoType();
-        }
+        String searchVal;
+
+//        searchVal = LocalVariableSymbolTableItem.START_KEY + identifier.getName();
+//        try {
+//            LocalVariableSymbolTableItem getItem = (LocalVariableSymbolTableItem) SymbolTable.top.getItem(searchVal, true);
+//            return getItem.getType();
+//        } catch (ItemNotFoundException exp) {
+//        }
+//
+//        searchVal = MethodSymbolTableItem.START_KEY + identifier.getName();
+//        try {
+//            LocalVariableSymbolTableItem getItem = (LocalVariableSymbolTableItem) SymbolTable.top.getItem(searchVal, true);
+//            return getItem.getType();
+//        } catch (ItemNotFoundException exp) {
+//        }
+//
+//        searchVal = FieldSymbolTableItem.START_KEY + identifier.getName();
+//        try {
+//            LocalVariableSymbolTableItem getItem = (LocalVariableSymbolTableItem) SymbolTable.top.getItem(searchVal, true);
+//            return getItem.getType();
+//        } catch (ItemNotFoundException exp) {
+//        }
+//
+//        identifier.addError(new VarNotDeclared(identifier.getLine(), identifier.getName()));
+//        return new NoType();
+        return null;
     }
+    //
+    // (a + "hello") = 4;
 
     @Override
     public Type visit(ListAccessByIndex listAccessByIndex) {
@@ -310,17 +355,22 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         if (instanceType instanceof NoType) {
             return new NoType();
         }
-
+//a.b()
         MethodDeclaration methodDeclaration = null;
         if (instanceType instanceof ClassType) {
             ClassType instanceClass = (ClassType) instanceType;
             Identifier classId = instanceClass.getClassName();
             String className = classId.getName();
             boolean isClassWithThisNameExist = classHierarchy.doesGraphContainNode(className);
-            if (isClassWithThisNameExist) {
-                //nemidunam searchCurrent bayad true bashe ya chi
-                MethodSymbolTableItem methodSymbolTableItem = (MethodSymbolTableItem) (((ClassSymbolTableItem) SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + className, true)).getClassSymbolTable().get(ClassSymbolTableItem.START_KEY + handlerName));
-            }
+//            if (isClassWithThisNameExist) {
+//                //nemidunam searchCurrent bayad true bashe ya chi
+//                MethodSymbolTableItem methodSymbolTableItem =
+//                        (MethodSymbolTableItem) (((ClassSymbolTableItem)
+//                                SymbolTable.root.getItem(
+//                                        ClassSymbolTableItem.START_KEY + className,
+//                                        true
+//                                )).getClassSymbolTable().get(ClassSymbolTableItem.START_KEY + handlerName));
+//            }
         }
 //        if (instance instanceof Identifier) {
 //            Identifier classId = (Identifier) instance;

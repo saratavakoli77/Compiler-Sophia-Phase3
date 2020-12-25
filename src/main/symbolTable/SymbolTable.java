@@ -34,7 +34,8 @@ public class SymbolTable {
     //End of static members
 
     public SymbolTable pre;
-    private Map<String, SymbolTableItem> items;
+    public Map<String, SymbolTableItem> items;
+//    private Map<String, SymbolTableItem> items;
 
     public SymbolTable() {
         this(null);

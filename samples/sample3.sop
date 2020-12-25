@@ -1,0 +1,17 @@
+class A extends B {
+
+}
+
+class B extends L {
+
+}
+
+class L {
+    def A2() {
+
+    }
+}
+
+class main {
+
+}
