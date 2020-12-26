@@ -6,20 +6,20 @@ import main.ast.nodes.declaration.classDec.classMembersDec.ConstructorDeclaratio
 import main.ast.nodes.declaration.classDec.classMembersDec.FieldDeclaration;
 import main.ast.nodes.declaration.classDec.classMembersDec.MethodDeclaration;
 import main.ast.nodes.declaration.variableDec.VarDeclaration;
+import main.ast.nodes.expression.Identifier;
 import main.ast.nodes.statement.*;
 import main.ast.nodes.statement.loop.BreakStmt;
 import main.ast.nodes.statement.loop.ContinueStmt;
 import main.ast.nodes.statement.loop.ForStmt;
 import main.ast.nodes.statement.loop.ForeachStmt;
+import main.compileErrorException.typeErrors.*;
 import main.symbolTable.SymbolTable;
 import main.symbolTable.exceptions.ItemNotFoundException;
-import main.symbolTable.items.ClassSymbolTableItem;
 import main.symbolTable.items.MethodSymbolTableItem;
-import main.symbolTable.items.SymbolTableItem;
 import main.symbolTable.utils.graph.Graph;
 import main.visitor.Visitor;
 
-import java.util.Map;
+import java.util.ArrayList;
 
 public class TypeChecker extends Visitor<Void> {
     private final Graph<String> classHierarchy;
@@ -52,21 +52,123 @@ public class TypeChecker extends Visitor<Void> {
 //        }
     }
 
+    public boolean isClassMain(ClassDeclaration classDeclaration) {
+        return classDeclaration.getClassName().getName().equals("Main");
+    }
+
+    public Void setCurrentSymbolTable(String declarationName) {
+        SymbolTable preSymbolTable = currentSymbolTable;
+        try {
+            currentSymbolTable = (
+                    (MethodSymbolTableItem) preSymbolTable.getItem(
+                            MethodSymbolTableItem.START_KEY + declarationName,
+                            true
+                    )
+            ).getMethodSymbolTable();
+        } catch (ItemNotFoundException e) {
+            System.out.println("something is very wrong :))"); //Todo
+        }
+        return null;
+    }
+
+    public Void validMain(ClassDeclaration mainDeclaration) {
+        Identifier parent = mainDeclaration.getParentClassName();
+        if (parent != null) {
+            mainDeclaration.addError(new MainClassCantExtend(mainDeclaration.getLine()));
+        }
+        ConstructorDeclaration constructorDeclaration = mainDeclaration.getConstructor();
+        if (constructorDeclaration == null) {
+            mainDeclaration.addError(new NoConstructorInMainClass(mainDeclaration));
+        } else {
+            constructorDeclaration.accept(this);
+            if (!constructorDeclaration.getArgs().isEmpty()) {
+                mainDeclaration.addError(new MainConstructorCantHaveArgs(mainDeclaration.getLine()));
+            }
+
+        }
+        return null;
+    }
+
+    public Void validClass(ClassDeclaration classDeclaration) {
+        Identifier parent = classDeclaration.getParentClassName();
+        if (parent != null) {
+            boolean doesParentExist = classHierarchy.doesGraphContainNode(parent.getName());
+            if (!doesParentExist) {
+                classDeclaration.addError(new ClassNotDeclared(classDeclaration.getLine(), parent.getName()));
+            }
+        }
+
+        ConstructorDeclaration constructorDeclaration = classDeclaration.getConstructor();
+        if (constructorDeclaration != null) {
+            constructorDeclaration.accept(this);
+        }
+        return null;
+    }
+
     @Override
     public Void visit(Program program) {
-        //TODO
+        boolean mainExists = false;
+        for (ClassDeclaration classDeclaration : program.getClasses()) {
+            classDeclaration.accept(this);
+            if (isClassMain(classDeclaration)) {
+                mainExists = true;
+            }
+        }
+
+        if (!mainExists) {
+            program.addError(new NoMainClass());
+        }
         return null;
     }
 
     @Override
     public Void visit(ClassDeclaration classDeclaration) {
-        //TODO
+        currentClassDeclaration = classDeclaration;
+        if (isClassMain(classDeclaration)) {
+            validMain(classDeclaration);
+        } else {
+            validClass(classDeclaration);
+        }
+
+        ArrayList<FieldDeclaration> fieldDeclarations = classDeclaration.getFields();
+        for (FieldDeclaration fieldDeclaration : fieldDeclarations) {
+            fieldDeclaration.accept(this);
+        }
+
+        ArrayList<MethodDeclaration> methodDeclarations = classDeclaration.getMethods();
+        for (MethodDeclaration methodDeclaration : methodDeclarations) {
+            methodDeclaration.accept(this);
+        }
+
+        currentClassDeclaration = null;
         return null;
     }
 
     @Override
     public Void visit(ConstructorDeclaration constructorDeclaration) {
-        //TODO
+        //todo: return type in constructor
+
+        SymbolTable preSymbolTable = currentSymbolTable;
+        setCurrentSymbolTable(constructorDeclaration.getMethodName().getName());
+        String currentClassDeclarationName = currentClassDeclaration.getClassName().getName();
+        if (!constructorDeclaration.getMethodName().getName().equals(currentClassDeclarationName)) {
+            constructorDeclaration.addError(new ConstructorNotSameNameAsClass(constructorDeclaration.getLine()));
+        }
+
+        ArrayList<VarDeclaration> args = constructorDeclaration.getArgs();
+        for (VarDeclaration varDeclaration : args) {
+            varDeclaration.accept(this);
+        }
+        ArrayList<VarDeclaration> localVars = constructorDeclaration.getLocalVars();
+        for (VarDeclaration varDeclaration : localVars) {
+            varDeclaration.accept(this);
+        }
+
+        ArrayList<Statement> statements = constructorDeclaration.getBody();
+        for (Statement statement : statements) {
+            statement.accept(this);
+        }
+        currentSymbolTable = preSymbolTable;
         return null;
     }
 
