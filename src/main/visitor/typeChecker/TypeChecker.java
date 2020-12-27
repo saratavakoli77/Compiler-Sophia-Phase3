@@ -6,12 +6,23 @@ import main.ast.nodes.declaration.classDec.classMembersDec.ConstructorDeclaratio
 import main.ast.nodes.declaration.classDec.classMembersDec.FieldDeclaration;
 import main.ast.nodes.declaration.classDec.classMembersDec.MethodDeclaration;
 import main.ast.nodes.declaration.variableDec.VarDeclaration;
+import main.ast.nodes.expression.Expression;
 import main.ast.nodes.expression.Identifier;
+import main.ast.nodes.expression.operators.BinaryOperator;
 import main.ast.nodes.statement.*;
 import main.ast.nodes.statement.loop.BreakStmt;
 import main.ast.nodes.statement.loop.ContinueStmt;
 import main.ast.nodes.statement.loop.ForStmt;
 import main.ast.nodes.statement.loop.ForeachStmt;
+import main.ast.types.NoType;
+import main.ast.types.NullType;
+import main.ast.types.Type;
+import main.ast.types.list.ListNameType;
+import main.ast.types.list.ListType;
+import main.ast.types.single.BoolType;
+import main.ast.types.single.ClassType;
+import main.ast.types.single.IntType;
+import main.ast.types.single.StringType;
 import main.compileErrorException.typeErrors.*;
 import main.symbolTable.SymbolTable;
 import main.symbolTable.exceptions.ItemNotFoundException;
@@ -20,10 +31,57 @@ import main.symbolTable.utils.graph.Graph;
 import main.visitor.Visitor;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 public class TypeChecker extends Visitor<Void> {
     private final Graph<String> classHierarchy;
     private final ExpressionTypeChecker expressionTypeChecker;
+
+    public Void checkMethodDeclaration(MethodDeclaration methodDeclaration) {
+        ArrayList<VarDeclaration> args = methodDeclaration.getArgs();
+        for (VarDeclaration varDeclaration : args) {
+            varDeclaration.accept(this);
+        }
+
+        ArrayList<VarDeclaration> localVars = methodDeclaration.getLocalVars();
+        for (VarDeclaration varDeclaration : localVars) {
+            varDeclaration.accept(this);
+        }
+
+        ArrayList<Statement> statements = methodDeclaration.getBody();
+        for (Statement statement : statements) {
+            statement.accept(this);
+        }
+
+        return null;
+    }
+
+    public boolean isPrintSupported(Type argType) {
+        if (expressionTypeChecker.isSubtype(argType, new IntType())) {
+            return true;
+        } else if (expressionTypeChecker.isSubtype(argType, new StringType())) {
+            return true;
+        } else if (expressionTypeChecker.isSubtype(argType, new BoolType())) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean checkListHasDuplicateKey(ListType listType) {
+        ArrayList<ListNameType> listElementTypes = listType.getElementsTypes();
+        boolean hasDuplicateKey = false;
+        Set<String> hashSet = new HashSet<String>();
+        for (ListNameType listNameType : listElementTypes) {
+            VarDeclaration varDeclaration = new VarDeclaration(listNameType.getName(), listNameType.getType());
+            varDeclaration.accept(this);
+            if (hashSet.contains(listNameType.getName().getName())) {
+                hasDuplicateKey = true;
+            }
+            hashSet.add(listNameType.getName().getName());
+        }
+        return hasDuplicateKey;
+    }
 
     public TypeChecker(Graph<String> classHierarchy) {
         this.classHierarchy = classHierarchy;
@@ -155,98 +213,206 @@ public class TypeChecker extends Visitor<Void> {
             constructorDeclaration.addError(new ConstructorNotSameNameAsClass(constructorDeclaration.getLine()));
         }
 
-        ArrayList<VarDeclaration> args = constructorDeclaration.getArgs();
-        for (VarDeclaration varDeclaration : args) {
-            varDeclaration.accept(this);
-        }
-        ArrayList<VarDeclaration> localVars = constructorDeclaration.getLocalVars();
-        for (VarDeclaration varDeclaration : localVars) {
-            varDeclaration.accept(this);
-        }
+        checkMethodDeclaration(constructorDeclaration);
 
-        ArrayList<Statement> statements = constructorDeclaration.getBody();
-        for (Statement statement : statements) {
-            statement.accept(this);
-        }
         currentSymbolTable = preSymbolTable;
         return null;
     }
 
     @Override
     public Void visit(MethodDeclaration methodDeclaration) {
-        //TODO
+        SymbolTable preSymbolTable = currentSymbolTable;
+        setCurrentSymbolTable(methodDeclaration.getMethodName().getName());
+
+        checkMethodDeclaration(methodDeclaration);
+
+        doesReturnStatementExist = false;
+
+        Type returnType = methodDeclaration.getReturnType();
+
+        if (returnType instanceof ClassType) {
+            String className = ((ClassType) returnType).getClassName().getName();
+            boolean doesClassExist = classHierarchy.doesGraphContainNode(className);
+            if (!doesClassExist) {
+                methodDeclaration.addError(new ClassNotDeclared(methodDeclaration.getLine(), className));
+            }
+            currentReturnType = new NoType();
+        }
+
+        boolean isMethodVoid = returnType instanceof NullType;
+
+        if (!isMethodVoid && !doesReturnStatementExist) {
+            methodDeclaration.addError(new MissingReturnStatement(methodDeclaration));
+        }
+
+        currentSymbolTable = preSymbolTable;
+        currentReturnType = null;
+
         return null;
     }
 
     @Override
     public Void visit(FieldDeclaration fieldDeclaration) {
-        //TODO
+        fieldDeclaration.getVarDeclaration().accept(this);
         return null;
     }
 
     @Override
     public Void visit(VarDeclaration varDeclaration) {
-        //TODO
+        Type varDecType = varDeclaration.getType();
+        if (varDecType instanceof ClassType) {
+            String className = ((ClassType) varDecType).getClassName().getName();
+            boolean doesClassExist = classHierarchy.doesGraphContainNode(className);
+            if (!doesClassExist) {
+                varDeclaration.addError(new ClassNotDeclared(varDeclaration.getLine(), className));
+            }
+        } else if (varDecType instanceof ListType) {
+            if (((ListType) varDecType).getElementsTypes().size() == 0) {
+                varDeclaration.addError(new CannotHaveEmptyList(varDeclaration.getLine()));
+            }
+            boolean listHasDuplicateKey = checkListHasDuplicateKey((ListType) varDecType);
+            if (listHasDuplicateKey) {
+                varDeclaration.addError(new DuplicateListId(varDeclaration.getLine()));
+            }
+        }
+
         return null;
     }
 
     @Override
     public Void visit(AssignmentStmt assignmentStmt) {
-        //TODO
+        Expression lValue = assignmentStmt.getlValue();
+        Expression rValue = assignmentStmt.getrValue();
+        Type lValueType = lValue.accept(expressionTypeChecker);
+        Type rValueType = rValue.accept(expressionTypeChecker);
+
+        boolean isLValueNoType = lValueType instanceof NoType;
+        boolean isRValueNoType = rValueType instanceof NoType;
+
+        if (!expressionTypeChecker.isValidLHS(lValue, lValueType) && !isLValueNoType) {
+            assignmentStmt.addError(new LeftSideNotLvalue(assignmentStmt.getLine()));
+        } else if (!(isLValueNoType || isRValueNoType || expressionTypeChecker.isSubtype(rValueType, lValueType))) {
+            assignmentStmt.addError(new UnsupportedOperandType(assignmentStmt.getLine(), BinaryOperator.assign.name()));
+        }
+
         return null;
     }
 
     @Override
     public Void visit(BlockStmt blockStmt) {
-        //TODO
+        ArrayList<Statement> statements = blockStmt.getStatements();
+        for (Statement statement : statements) {
+            statement.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(ConditionalStmt conditionalStmt) {
-        //TODO
+        Expression condition = conditionalStmt.getCondition();
+        Statement thenBody = conditionalStmt.getThenBody();
+        Statement elseBody = conditionalStmt.getElseBody();
+        Type conditionType = condition.accept(expressionTypeChecker);
+        if (!(expressionTypeChecker.isSubtype(conditionType, new BoolType()))) {
+            //todo nemidunim ke az conditionalStmt getLine konim ya az contion
+            conditionalStmt.addError(new ConditionNotBool(conditionalStmt.getLine()));
+        }
+        thenBody.accept(this);
+        if (elseBody != null) {
+            elseBody.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(MethodCallStmt methodCallStmt) {
-        //TODO
+        methodCallStmt.getMethodCall().accept(expressionTypeChecker);
         return null;
     }
 
     @Override
     public Void visit(PrintStmt print) {
-        //TODO
+        Expression arg = print.getArg();
+        Type argType = arg.accept(expressionTypeChecker);
+        if (!isPrintSupported(argType)) {
+            print.addError(new UnsupportedTypeForPrint(print.getLine()));
+        }
         return null;
     }
 
     @Override
     public Void visit(ReturnStmt returnStmt) {
-        //TODO
+        Type returnType = returnStmt.getReturnedExpr().accept(expressionTypeChecker);
+        if (!expressionTypeChecker.isSubtype(returnType, currentReturnType)) {
+            returnStmt.addError(new ReturnValueNotMatchMethodReturnType(returnStmt));
+        }
+        doesReturnStatementExist = true;
         return null;
     }
 
     @Override
     public Void visit(BreakStmt breakStmt) {
-        //TODO
+        if (nestedLoopsCount == 0) {
+            breakStmt.addError(new ContinueBreakNotInLoop(breakStmt.getLine(), 0));
+        }
         return null;
     }
 
     @Override
     public Void visit(ContinueStmt continueStmt) {
-        //TODO
+        if (nestedLoopsCount == 0) {
+            continueStmt.addError(new ContinueBreakNotInLoop(continueStmt.getLine(), 0));
+        }
         return null;
     }
 
     @Override
     public Void visit(ForeachStmt foreachStmt) {
-        //TODO
+        Identifier variable = foreachStmt.getVariable();
+        Expression list = foreachStmt.getList();
+        Statement body = foreachStmt.getBody();
+
+        Type variableType = variable.accept(expressionTypeChecker);
+        Type listType = list.accept(expressionTypeChecker);
+
+        //todo agar listType noType bud, bayad error bedim ya na?
+        if (listType instanceof ListType) {
+            boolean isListSingleType = expressionTypeChecker.isAllElementsHaveSameType((ListType) listType);
+            if (!isListSingleType) {
+                foreachStmt.addError(new ForeachListElementsNotSameType(foreachStmt.getLine()));
+                ArrayList<ListNameType> elementNameTypes = ((ListType) listType).getElementsTypes();
+                Type firstElementType = elementNameTypes.get(0).getType();
+                if (!variableType.toString().equals(firstElementType.toString())) {
+                    foreachStmt.addError(new ForeachVarNotMatchList(foreachStmt));
+                }
+            }
+        } else {
+            //todo getLine bayad az list bashe ya az foreach
+            foreachStmt.addError(new ForeachCantIterateNoneList(foreachStmt.getLine()));
+        }
+
+        body.accept(this);
+        nestedLoopsCount -= 1;
+
         return null;
     }
 
     @Override
     public Void visit(ForStmt forStmt) {
-        //TODO
+        AssignmentStmt initialize = forStmt.getInitialize();
+        Expression condition = forStmt.getCondition();
+        AssignmentStmt update = forStmt.getUpdate();
+        Statement body = forStmt.getBody();
+        nestedLoopsCount += 1;
+        initialize.accept(this);
+        update.accept(this);
+        Type conditionType = condition.accept(expressionTypeChecker);
+        if (!(expressionTypeChecker.isSubtype(conditionType, new BoolType()))) {
+            //todo nemidunim ke az conditionalStmt getLine konim ya az contion
+            forStmt.addError(new ConditionNotBool(forStmt.getLine()));
+        }
+        body.accept(this);
+        nestedLoopsCount -= 1;
         return null;
     }
 
