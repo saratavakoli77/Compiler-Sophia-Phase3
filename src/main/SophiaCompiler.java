@@ -25,12 +25,12 @@ public class SophiaCompiler {
             System.exit(1);
 
         TypeChecker typeChecker = new TypeChecker(nameAnalyzer.getClassHierarchy());
-//        program.accept(typeChecker);
-//        numberOfErrors = program.accept(errorReporter);
-//        if(numberOfErrors > 0)
-//            System.exit(1);
-//
-//        System.out.println("Compilation successful");
+        program.accept(typeChecker);
+        numberOfErrors = program.accept(errorReporter);
+        if(numberOfErrors > 0)
+            System.exit(1);
+
+        System.out.println("Compilation successful");
 
     }
 }

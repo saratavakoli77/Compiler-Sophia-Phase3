@@ -26,6 +26,7 @@ import main.ast.types.single.StringType;
 import main.compileErrorException.typeErrors.*;
 import main.symbolTable.SymbolTable;
 import main.symbolTable.exceptions.ItemNotFoundException;
+import main.symbolTable.items.ClassSymbolTableItem;
 import main.symbolTable.items.MethodSymbolTableItem;
 import main.symbolTable.utils.graph.Graph;
 import main.visitor.Visitor;
@@ -165,6 +166,7 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(Program program) {
+        currentSymbolTable = SymbolTable.root;
         boolean mainExists = false;
         for (ClassDeclaration classDeclaration : program.getClasses()) {
             classDeclaration.accept(this);
@@ -182,6 +184,19 @@ public class TypeChecker extends Visitor<Void> {
     @Override
     public Void visit(ClassDeclaration classDeclaration) {
         currentClassDeclaration = classDeclaration;
+
+        try {
+            currentSymbolTable = (
+                    (ClassSymbolTableItem) SymbolTable.root.getItem(
+                            ClassSymbolTableItem.START_KEY + classDeclaration.getClassName().getName(),
+                            true
+                    )
+            ).getClassSymbolTable();
+        } catch (ItemNotFoundException e) {
+            System.out.println("something is very wrong2 :))"); //Todo
+        }
+
+
         if (isClassMain(classDeclaration)) {
             validMain(classDeclaration);
         } else {
@@ -281,10 +296,23 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(AssignmentStmt assignmentStmt) {
+        // A: a;
+        // a = x;
+        //
         Expression lValue = assignmentStmt.getlValue();
         Expression rValue = assignmentStmt.getrValue();
         Type lValueType = lValue.accept(expressionTypeChecker);
         Type rValueType = rValue.accept(expressionTypeChecker);
+
+        if (expressionTypeChecker.isOperandVoidMethodCall(lValue, lValueType)) {
+            assignmentStmt.addError(new CantUseValueOfVoidMethod(assignmentStmt.getLine()));
+            lValueType = new NoType();
+        }
+
+        if (expressionTypeChecker.isOperandVoidMethodCall(rValue, rValueType)) {
+            assignmentStmt.addError(new CantUseValueOfVoidMethod(assignmentStmt.getLine()));
+            rValueType = new NoType();
+        }
 
         boolean isLValueNoType = lValueType instanceof NoType;
         boolean isRValueNoType = rValueType instanceof NoType;
@@ -361,7 +389,7 @@ public class TypeChecker extends Visitor<Void> {
     @Override
     public Void visit(ContinueStmt continueStmt) {
         if (nestedLoopsCount == 0) {
-            continueStmt.addError(new ContinueBreakNotInLoop(continueStmt.getLine(), 0));
+            continueStmt.addError(new ContinueBreakNotInLoop(continueStmt.getLine(), 1));
         }
         return null;
     }

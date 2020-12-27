@@ -199,24 +199,20 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         return null;
     }
 
-    public Type classMemberAccess(ObjectOrListMemberAccess objectOrListMemberAccess, ClassType instanceType, boolean isMemberCorrect, Expression memberName) {
+    public Type classMemberAccess(ObjectOrListMemberAccess objectOrListMemberAccess, ClassType instanceType, Expression memberName) {
         Identifier classId = instanceType.getClassName();
         try {
             ClassSymbolTableItem classSymbolTableItem = (ClassSymbolTableItem) SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + classId.getName(), true);
-            if (isMemberCorrect) {
-                SymbolTable classSymbolTable;
-                classSymbolTable = classSymbolTableItem.getClassSymbolTable();
-                currentSymbolTable = classSymbolTable;
-                String memberNameStr = ((Identifier) memberName).getName();
-                Type memberNameType = findMember(memberNameStr);
-                if (memberNameType == null) {
-                    objectOrListMemberAccess.addError(new MemberNotAvailableInClass(objectOrListMemberAccess.getLine(), memberNameStr, classId.getName()));
-                    return new NoType();
-                }
-                return memberNameType;
-            } else {
+            SymbolTable classSymbolTable;
+            classSymbolTable = classSymbolTableItem.getClassSymbolTable();
+            currentSymbolTable = classSymbolTable;
+            String memberNameStr = ((Identifier) memberName).getName();
+            Type memberNameType = findMember(memberNameStr);
+            if (memberNameType == null) {
+                objectOrListMemberAccess.addError(new MemberNotAvailableInClass(objectOrListMemberAccess.getLine(), memberNameStr, classId.getName()));
                 return new NoType();
             }
+            return memberNameType;
         } catch (ItemNotFoundException e) {
 //            objectOrListMemberAccess.addError(new ClassNotDeclared(objectOrListMemberAccess.getLine(), classId.getName()));
 //            return new NoType();
@@ -225,19 +221,22 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         return null;
     }
 
-    public Type listMemberAccess(ObjectOrListMemberAccess objectOrListMemberAccess, ListType instanceType, boolean isMemberCorrect, Expression memberName) {
-        if (isMemberCorrect) {
-            ArrayList<ListNameType> listElementsTypes = instanceType.getElementsTypes();
-            String memberNameStr = ((Identifier) memberName).getName();
-            Type memberNameType = findElement(listElementsTypes, memberNameStr);
-            if (memberNameType == null) {
-                objectOrListMemberAccess.addError(new ListMemberNotFound(objectOrListMemberAccess.getLine(), memberNameStr));
-                return new NoType();
-            }
-            return memberNameType;
-        } else {
+    public Type listMemberAccess(ObjectOrListMemberAccess objectOrListMemberAccess, ListType instanceType, Expression memberName) {
+        ArrayList<ListNameType> listElementsTypes = instanceType.getElementsTypes();
+        String memberNameStr = ((Identifier) memberName).getName();
+        Type memberNameType = findElement(listElementsTypes, memberNameStr);
+        if (memberNameType == null) {
+            objectOrListMemberAccess.addError(new ListMemberNotFound(objectOrListMemberAccess.getLine(), memberNameStr));
             return new NoType();
         }
+        return memberNameType;
+    }
+
+    public boolean isOperandVoidMethodCall(Expression operand, Type operandType) {
+        if (operand instanceof MethodCall) {
+            return operandType instanceof NullType;
+        }
+        return false;
     }
 
     @Override
@@ -248,6 +247,16 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         Type secondOperandType = secondOperand.accept(this);
         boolean isFirstOperandNoType= false;
         boolean isSecondOperandNoType = false;
+
+        if (isOperandVoidMethodCall(firstOperand, firstOperandType)) {
+            binaryExpression.addError(new CantUseValueOfVoidMethod(binaryExpression.getLine()));
+            firstOperandType = new NoType();
+        }
+
+        if (isOperandVoidMethodCall(secondOperand, secondOperandType)) {
+            binaryExpression.addError(new CantUseValueOfVoidMethod(binaryExpression.getLine()));
+            secondOperandType = new NoType();
+        }
 
         if (firstOperandType instanceof NoType) {
             isFirstOperandNoType = true;
@@ -327,6 +336,11 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         Type operandType = operand.accept(this);
         UnaryOperator unaryOperator = unaryExpression.getOperator();
 
+        if (isOperandVoidMethodCall(operand, operandType)) {
+            unaryExpression.addError(new CantUseValueOfVoidMethod(unaryExpression.getLine()));
+            operandType = new NoType();
+        }
+
         if (
                 unaryOperator == UnaryOperator.postinc ||
                 unaryOperator == UnaryOperator.preinc  ||
@@ -368,15 +382,11 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(ObjectOrListMemberAccess objectOrListMemberAccess) {
-        //todo: something is very very wrong
         boolean isInstanceCorrect = true;
-        boolean isMemberCorrect = true;
         boolean isInstanceNoType = false;
-        boolean isMemberNoType = false;
 
         Expression instance = objectOrListMemberAccess.getInstance();
         Type instanceType = instance.accept(this);
-
         if (instanceType instanceof NoType) {
             isInstanceNoType = true;
         }
@@ -386,25 +396,16 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             objectOrListMemberAccess.addError(new MemberAccessOnNoneObjOrListType(objectOrListMemberAccess.getLine()));
         }
 
-        Expression memberName = objectOrListMemberAccess.getMemberName();
-        if (!(memberName instanceof Identifier)) {
-            Type memberNameType = memberName.accept(this);
-            if (memberNameType instanceof NoType) {
-                isMemberNoType = true;
-            }
-            isMemberCorrect = false;
-            //todo: age no type nabashe, che errori bayad bedim?
-        }
-
         if (!isInstanceCorrect) {
             return new NoType();
         }
 
+        Identifier memberName = objectOrListMemberAccess.getMemberName();
         if (instanceType instanceof ClassType) {
-            return classMemberAccess(objectOrListMemberAccess, (ClassType) instanceType, isMemberCorrect, memberName);
+            return classMemberAccess(objectOrListMemberAccess, (ClassType) instanceType, memberName);
         }
         else if (instanceType instanceof ListType) {
-            return listMemberAccess(objectOrListMemberAccess, (ListType) instanceType, isMemberCorrect, memberName);
+            return listMemberAccess(objectOrListMemberAccess, (ListType) instanceType, memberName);
         }
 
         return null;
@@ -418,8 +419,17 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                             LocalVariableSymbolTableItem.START_KEY + identifier.getName(),
                             true
                     );
+            //todo: is it ok?
+            Type idType = localVariableSymbolTableItem.getType();
+            if (idType instanceof ClassType) {
+                try {
+                    SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + ((ClassType) idType).getClassName().getName(), true);
+                } catch (ItemNotFoundException e) {
+                    return new NoType();
+                } //todo: add to other places
+            }
             return localVariableSymbolTableItem.getType();
-        } catch (ItemNotFoundException e) {
+        } catch (ItemNotFoundException e2) {
             identifier.addError(new VarNotDeclared(identifier.getLine(), identifier.getName()));
             return new NoType();
         }
@@ -475,25 +485,28 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         Expression instance = methodCall.getInstance();
         Type instanceType = instance.accept(this);
 
-        ArrayList<Expression> methodArgs = methodCall.getArgs();
-        ArrayList<Type> passedArgs = new ArrayList<>();
+        ArrayList<Expression> passedArgs = methodCall.getArgs();
+        ArrayList<Type> passedArgTypes = new ArrayList<>();
 
-        for (Expression exp: methodArgs) {
+        for (Expression exp: passedArgs) {
             Type expType = exp.accept(this);
-            passedArgs.add(expType);
+            passedArgTypes.add(expType);
         }
 
         if (instanceType instanceof FptrType) {
             ArrayList<Type> methodArgsTypes = ((FptrType) instanceType).getArgumentsTypes();
             boolean sizeMatch = false;
             boolean argTypesMatch = true;
-            if (methodArgsTypes.size() == passedArgs.size()) {
+            if (methodArgsTypes.size() == passedArgTypes.size()) {
                 sizeMatch = true;
-                for (int i = 0; i < passedArgs.size(); i++) {
-                    if (!isSubtype(passedArgs.get(i), methodArgsTypes.get(i))) {
+                for (int i = 0; i < passedArgTypes.size(); i++) {
+                    if (!isSubtype(passedArgTypes.get(i), methodArgsTypes.get(i))) {
                         argTypesMatch = false;
-                        break;
                     }
+                    if (isOperandVoidMethodCall(passedArgs.get(i), passedArgTypes.get(i))) {
+                        passedArgs.get(i).addError(new CantUseValueOfVoidMethod(passedArgs.get(i).getLine()));
+                        argTypesMatch = false;
+                    }// todo: should i set to noType? or get 2 errors
                 }
             }
             if (!sizeMatch || !argTypesMatch) {
@@ -549,7 +562,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             }
             return classType;
         } catch (ItemNotFoundException e) {
-            newClassInstance.addError(new ClassNotDeclared(newClassInstance.getLine(), newClassInstance.getClass().getName()));
+            newClassInstance.addError(new ClassNotDeclared(newClassInstance.getLine(), newClassInstance.getClassType().getClassName().getName()));
             return new NoType();
         }
     }
@@ -565,6 +578,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         ArrayList<ListNameType> elementsTypes = new ArrayList<>();
         for (Expression exp: listValueElements) {
             Type expType = exp.accept(this);
+            if (isOperandVoidMethodCall(exp, expType)) {
+                exp.addError(new CantUseValueOfVoidMethod(exp.getLine()));
+                expType = new NoType();
+            }
             elementsTypes.add(new ListNameType(expType));
         }
         return new ListType(elementsTypes);
