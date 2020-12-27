@@ -47,7 +47,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         ArrayList<Type> subTypeArgs = subType.getArgumentsTypes();
         ArrayList<Type> superTypeArgs = superType.getArgumentsTypes();
 
-        if (subTypeArgs.size() == superTypeArgs.size()) {
+        if (subTypeArgs.size() != superTypeArgs.size()) {
             return false;
         }
 
@@ -113,14 +113,17 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     }
 
     public boolean isEqualitySupported(Type firstOperand, Type secondOperand) {
+        // todo: equality for function pointers
         if (firstOperand instanceof ListType || secondOperand instanceof ListType) {
             return false;
         }
-        if (firstOperand.toString().equals(secondOperand.toString())) {
-            return true;
-        }
+
 
         if (firstOperand instanceof NoType || secondOperand instanceof NoType) {
+            return false;
+        }
+
+        if (firstOperand.toString().equals(secondOperand.toString())) {
             return true;
         }
 
@@ -243,15 +246,15 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         Expression secondOperand = binaryExpression.getSecondOperand();
         Type firstOperandType = firstOperand.accept(this);
         Type secondOperandType = secondOperand.accept(this);
-        boolean isFirstOperandNoType= true;
-        boolean isSecondOperandNoType = true;
+        boolean isFirstOperandNoType= false;
+        boolean isSecondOperandNoType = false;
 
         if (firstOperandType instanceof NoType) {
-            isFirstOperandNoType = false;
+            isFirstOperandNoType = true;
         }
 
         if (secondOperandType instanceof NoType) {
-            isSecondOperandNoType = false;
+            isSecondOperandNoType = true;
         }
 
         BinaryOperator binaryOperator = binaryExpression.getBinaryOperator();
@@ -266,7 +269,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         ) {
             if (firstOperandType instanceof IntType && secondOperandType instanceof IntType) {
                 return new IntType();
-            } else if (!isSecondOperandNoType && !isFirstOperandNoType) {
+            } else if (!isSubtype(firstOperandType, new IntType()) || !isSubtype(secondOperandType, new IntType())) {
                 binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
                 return new NoType();
             }
@@ -277,9 +280,9 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 binaryOperator == BinaryOperator.or ||
                 binaryOperator == BinaryOperator.and
         ) {
-            if (isSubtype(firstOperandType, new BoolType()) && isSubtype(secondOperandType, new BoolType())) {
+            if (firstOperandType instanceof BoolType && secondOperandType instanceof BoolType) {
                 return new BoolType();
-            } else if (!isSecondOperandNoType && !isFirstOperandNoType) {
+            } else if (!isSubtype(firstOperandType, new BoolType()) || !isSubtype(secondOperandType, new BoolType())) {
                 binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
                 return new NoType();
             }
@@ -365,6 +368,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(ObjectOrListMemberAccess objectOrListMemberAccess) {
+        //todo: something is very very wrong
         boolean isInstanceCorrect = true;
         boolean isMemberCorrect = true;
         boolean isInstanceNoType = false;
@@ -389,7 +393,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 isMemberNoType = true;
             }
             isMemberCorrect = false;
-            //age no type nabashe, che errori bayad bedim?
+            //todo: age no type nabashe, che errori bayad bedim?
         }
 
         if (!isInstanceCorrect) {
