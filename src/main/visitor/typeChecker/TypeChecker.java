@@ -130,7 +130,7 @@ public class TypeChecker extends Visitor<Void> {
         return null;
     }
 
-    public Void validMain(ClassDeclaration mainDeclaration) {
+    public Void validateMain(ClassDeclaration mainDeclaration) {
         Identifier parent = mainDeclaration.getParentClassName();
         if (parent != null) {
             mainDeclaration.addError(new MainClassCantExtend(mainDeclaration.getLine()));
@@ -148,12 +148,15 @@ public class TypeChecker extends Visitor<Void> {
         return null;
     }
 
-    public Void validClass(ClassDeclaration classDeclaration) {
+    public Void validateClass(ClassDeclaration classDeclaration) {
         Identifier parent = classDeclaration.getParentClassName();
         if (parent != null) {
             boolean doesParentExist = classHierarchy.doesGraphContainNode(parent.getName());
             if (!doesParentExist) {
                 classDeclaration.addError(new ClassNotDeclared(classDeclaration.getLine(), parent.getName()));
+            }
+            if (parent.getName().equals("Main")) {
+                classDeclaration.addError(new CannotExtendFromMainClass(classDeclaration.getLine()));
             }
         }
 
@@ -198,9 +201,9 @@ public class TypeChecker extends Visitor<Void> {
 
 
         if (isClassMain(classDeclaration)) {
-            validMain(classDeclaration);
+            validateMain(classDeclaration);
         } else {
-            validClass(classDeclaration);
+            validateClass(classDeclaration);
         }
 
         ArrayList<FieldDeclaration> fieldDeclarations = classDeclaration.getFields();
@@ -296,9 +299,6 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(AssignmentStmt assignmentStmt) {
-        // A: a;
-        // a = x;
-        //
         Expression lValue = assignmentStmt.getlValue();
         Expression rValue = assignmentStmt.getrValue();
         Type lValueType = lValue.accept(expressionTypeChecker);

@@ -33,6 +33,8 @@ public class Visitor<T> implements IVisitor<T> {
 
     public static int nestedLoopsCount = 0;
 
+    public static boolean hasSeenNoneLValue = false;
+
     @Override
     public T visit(Program program) {
         return null;
