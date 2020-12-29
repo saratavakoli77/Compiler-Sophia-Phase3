@@ -323,12 +323,24 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 binaryOperator == BinaryOperator.mult ||
                 binaryOperator == BinaryOperator.sub ||
                 binaryOperator == BinaryOperator.div ||
-                binaryOperator == BinaryOperator.mod ||
+                binaryOperator == BinaryOperator.mod
+        ) {
+            if (firstOperandType instanceof IntType && secondOperandType instanceof IntType) {
+                return new IntType();
+            } else if (!isSubtype(firstOperandType, new IntType()) || !isSubtype(secondOperandType, new IntType())) {
+                binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
+                return new NoType();
+            }
+            return new NoType();
+        }
+
+
+        if (
                 binaryOperator == BinaryOperator.lt ||
                 binaryOperator == BinaryOperator.gt
         ) {
             if (firstOperandType instanceof IntType && secondOperandType instanceof IntType) {
-                return new IntType();
+                return new BoolType();
             } else if (!isSubtype(firstOperandType, new IntType()) || !isSubtype(secondOperandType, new IntType())) {
                 binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
                 return new NoType();

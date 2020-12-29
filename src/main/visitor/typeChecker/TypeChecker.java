@@ -17,6 +17,7 @@ import main.ast.nodes.statement.loop.ForeachStmt;
 import main.ast.types.NoType;
 import main.ast.types.NullType;
 import main.ast.types.Type;
+import main.ast.types.functionPointer.FptrType;
 import main.ast.types.list.ListNameType;
 import main.ast.types.list.ListType;
 import main.ast.types.single.BoolType;
@@ -58,6 +59,30 @@ public class TypeChecker extends Visitor<Void> {
         return null;
     }
 
+    public void validateVarType(Type varDecType, VarDeclaration varDeclaration) {
+        if (varDecType instanceof ClassType) {
+            String className = ((ClassType) varDecType).getClassName().getName();
+            boolean doesClassExist = classHierarchy.doesGraphContainNode(className);
+            if (!doesClassExist) {
+                varDeclaration.addError(new ClassNotDeclared(varDeclaration.getLine(), className));
+            }
+        } else if (varDecType instanceof ListType) {
+            if (((ListType) varDecType).getElementsTypes().size() == 0) {
+                varDeclaration.addError(new CannotHaveEmptyList(varDeclaration.getLine()));
+            }
+            boolean listHasDuplicateKey = checkListHasDuplicateKey((ListType) varDecType, varDeclaration);
+            if (listHasDuplicateKey) {
+                varDeclaration.addError(new DuplicateListId(varDeclaration.getLine()));
+            }
+        } else if (varDecType instanceof FptrType) {
+            validateVarType(((FptrType) varDecType).getReturnType(), varDeclaration);
+            ArrayList<Type> argumentsTypes = ((FptrType) varDecType).getArgumentsTypes();
+            for (Type argumentType : argumentsTypes) {
+                validateVarType(argumentType, varDeclaration);
+            }
+        }
+    }
+
     public boolean isPrintSupported(Type argType) {
         if (expressionTypeChecker.isSubtype(argType, new IntType())) {
             return true;
@@ -69,13 +94,14 @@ public class TypeChecker extends Visitor<Void> {
         return false;
     }
 
-    public boolean checkListHasDuplicateKey(ListType listType) {
+    public boolean checkListHasDuplicateKey(ListType listType, VarDeclaration varDeclaration) {
         ArrayList<ListNameType> listElementTypes = listType.getElementsTypes();
         boolean hasDuplicateKey = false;
         Set<String> hashSet = new HashSet<String>();
         for (ListNameType listNameType : listElementTypes) {
-            VarDeclaration varDeclaration = new VarDeclaration(listNameType.getName(), listNameType.getType());
-            varDeclaration.accept(this);
+//            VarDeclaration varDeclaration = new VarDeclaration(listNameType.getName(), listNameType.getType());
+//            varDeclaration.accept(this);
+            validateVarType(listNameType.getType(), varDeclaration);
             if (hashSet.contains(listNameType.getName().getName())) {
                 hasDuplicateKey = true;
             }
@@ -121,7 +147,7 @@ public class TypeChecker extends Visitor<Void> {
         } else {
             constructorDeclaration.accept(this);
             if (!constructorDeclaration.getArgs().isEmpty()) {
-                mainDeclaration.addError(new MainConstructorCantHaveArgs(mainDeclaration.getLine()));
+                mainDeclaration.addError(new MainConstructorCantHaveArgs(constructorDeclaration.getLine()));
             }
 
         }
@@ -221,12 +247,11 @@ public class TypeChecker extends Visitor<Void> {
     public Void visit(MethodDeclaration methodDeclaration) {
         SymbolTable preSymbolTable = currentSymbolTable;
         setCurrentSymbolTable(methodDeclaration.getMethodName().getName());
-
         doesReturnStatementExist = false;
-        checkMethodDeclaration(methodDeclaration);
-
         Type returnType = methodDeclaration.getReturnType();
+        currentReturnType = returnType;
 
+        checkMethodDeclaration(methodDeclaration);
         if (returnType instanceof ClassType) {
             String className = ((ClassType) returnType).getClassName().getName();
             boolean doesClassExist = classHierarchy.doesGraphContainNode(className);
@@ -257,21 +282,7 @@ public class TypeChecker extends Visitor<Void> {
     @Override
     public Void visit(VarDeclaration varDeclaration) {
         Type varDecType = varDeclaration.getType();
-        if (varDecType instanceof ClassType) {
-            String className = ((ClassType) varDecType).getClassName().getName();
-            boolean doesClassExist = classHierarchy.doesGraphContainNode(className);
-            if (!doesClassExist) {
-                varDeclaration.addError(new ClassNotDeclared(varDeclaration.getLine(), className));
-            }
-        } else if (varDecType instanceof ListType) {
-            if (((ListType) varDecType).getElementsTypes().size() == 0) {
-                varDeclaration.addError(new CannotHaveEmptyList(varDeclaration.getLine()));
-            }
-            boolean listHasDuplicateKey = checkListHasDuplicateKey((ListType) varDecType);
-            if (listHasDuplicateKey) {
-                varDeclaration.addError(new DuplicateListId(varDeclaration.getLine()));
-            }
-        }
+        validateVarType(varDecType, varDeclaration);
 
         return null;
     }
@@ -280,9 +291,9 @@ public class TypeChecker extends Visitor<Void> {
     public Void visit(AssignmentStmt assignmentStmt) {
         Expression lValue = assignmentStmt.getlValue();
         Expression rValue = assignmentStmt.getrValue();
+        Type rValueType = rValue.accept(expressionTypeChecker);
         hasSeenNoneLValue = false;
         Type lValueType = lValue.accept(expressionTypeChecker);
-        Type rValueType = rValue.accept(expressionTypeChecker);
 
         if (expressionTypeChecker.isOperandVoidMethodCall(lValue, lValueType)) {
             assignmentStmt.addError(new CantUseValueOfVoidMethod(assignmentStmt.getLine()));
@@ -388,6 +399,7 @@ public class TypeChecker extends Visitor<Void> {
             boolean isListSingleType = expressionTypeChecker.isAllElementsHaveSameType((ListType) listType);
             if (!isListSingleType) {
                 foreachStmt.addError(new ForeachListElementsNotSameType(foreachStmt.getLine()));
+            } else {
                 ArrayList<ListNameType> elementNameTypes = ((ListType) listType).getElementsTypes();
                 Type firstElementType = elementNameTypes.get(0).getType();
                 if (!variableType.toString().equals(firstElementType.toString())) {
