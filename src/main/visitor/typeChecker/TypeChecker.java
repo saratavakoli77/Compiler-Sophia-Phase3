@@ -345,7 +345,9 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(MethodCallStmt methodCallStmt) {
+        inMethodCallStatement = true;
         methodCallStmt.getMethodCall().accept(expressionTypeChecker);
+        inMethodCallStatement = false;
         return null;
     }
 

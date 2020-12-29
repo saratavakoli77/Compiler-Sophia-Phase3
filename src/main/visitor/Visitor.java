@@ -35,6 +35,8 @@ public class Visitor<T> implements IVisitor<T> {
 
     public static boolean hasSeenNoneLValue = false;
 
+    public static boolean inMethodCallStatement = false;
+
     @Override
     public T visit(Program program) {
         return null;

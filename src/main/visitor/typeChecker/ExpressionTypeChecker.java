@@ -270,9 +270,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     }
 
     public boolean isOperandVoidMethodCall(Expression operand, Type operandType) {
-        if (operand instanceof MethodCall) {
-            return operandType instanceof NullType;
-        }
+//        if (operand instanceof MethodCall) {
+//            return operandType instanceof NullType;
+//        }
+//        return false;
         return false;
     }
 
@@ -581,6 +582,8 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     @Override
     public Type visit(MethodCall methodCall) {
         Expression instance = methodCall.getInstance();
+        boolean temp = inMethodCallStatement;
+        inMethodCallStatement = false;
         Type instanceType = instance.accept(this);
 
         ArrayList<Expression> passedArgs = methodCall.getArgs();
@@ -590,9 +593,16 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             Type expType = exp.accept(this);
             passedArgTypes.add(expType);
         }
+        inMethodCallStatement = temp;
         hasSeenNoneLValue = true;
 
         if (instanceType instanceof FptrType) {
+            Type returnType = ((FptrType) instanceType).getReturnType();
+            if (returnType instanceof NullType && !inMethodCallStatement) {
+                methodCall.addError(new CantUseValueOfVoidMethod(methodCall.getLine()));
+                returnType = new NoType();
+            }
+
             ArrayList<Type> methodArgsTypes = ((FptrType) instanceType).getArgumentsTypes();
             boolean sizeMatch = false;
             boolean argTypesMatch = true;
@@ -612,10 +622,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 methodCall.addError(new MethodCallNotMatchDefinition(methodCall.getLine()));
                 return new NoType();
             }
-            if (!doesClassTypeExist(((FptrType) instanceType).getReturnType())) {
+            if (!doesClassTypeExist(returnType)) {
                 return new NoType();
             }
-            return ((FptrType) instanceType).getReturnType();
+            return returnType;
         }
 
 
