@@ -156,17 +156,17 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         return false;
     }
 
-    public boolean isValidLHS(Expression lhs, Type lhsType) {
-        if (hasSeenNoneLValue) {
-            hasSeenNoneLValue = false;
-            return false;
-        }
-        boolean validMember = false;
-        if (lhs instanceof ObjectOrListMemberAccess) {
-            validMember = !(lhsType instanceof FptrType);
-        } //todo: fptr left hand side?
-        return lhs instanceof Identifier || lhs instanceof ListAccessByIndex || validMember;
-    }
+//    public boolean isValidLHS(Expression lhs, Type lhsType) {
+//        if (hasSeenNoneLValue) {
+//            hasSeenNoneLValue = false;
+//            return false;
+//        }
+//        boolean validMember = false;
+//        if (lhs instanceof ObjectOrListMemberAccess) {
+//            validMember = !(lhsType instanceof FptrType);
+//        } //todo: fptr left hand side?
+//        return lhs instanceof Identifier || lhs instanceof ListAccessByIndex || validMember;
+//    }
 
     public boolean isAllElementsHaveSameType(ListType list) {
         ArrayList<ListNameType> elementNameTypes = list.getElementsTypes();
@@ -291,8 +291,11 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         BinaryOperator binaryOperator = binaryExpression.getBinaryOperator();
         Expression firstOperand = binaryExpression.getFirstOperand();
         Expression secondOperand = binaryExpression.getSecondOperand();
+        hasSeenNoneLValue = false;
         Type firstOperandType = firstOperand.accept(this);
+        boolean isFirstOperandLHS = !hasSeenNoneLValue;
         Type secondOperandType = secondOperand.accept(this);
+        hasSeenNoneLValue = true;
         boolean isFirstOperandNoType= false;
         boolean isSecondOperandNoType = false;
 
@@ -361,16 +364,22 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         if (
                 binaryOperator == BinaryOperator.assign
         ) {
-            if (!isValidLHS(firstOperand, firstOperandType)) {
+            boolean isExpressionCorrect = true;
+            if (!isFirstOperandLHS) {
                 binaryExpression.addError(new LeftSideNotLvalue(binaryExpression.getLine()));
-                return new NoType();
-                //todo ghablan nazashte budim ino! idkkkkkkkkkkk
-            } else if (isFirstOperandNoType || isSecondOperandNoType) {
-                return new NoType();
-            } else if (isSubtype(secondOperandType, firstOperandType)) {
+                isExpressionCorrect = false;
+            }
+            if (isFirstOperandNoType || isSecondOperandNoType) {
+                isExpressionCorrect = false;
+            }
+            if (!isSubtype(secondOperandType, firstOperandType)) {
+                binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
+                isExpressionCorrect = false;
+            }
+
+            if (isExpressionCorrect) {
                 return firstOperandType;
             } else {
-                binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
                 return new NoType();
             }
         }
@@ -381,7 +390,12 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     @Override
     public Type visit(UnaryExpression unaryExpression) {
         Expression operand = unaryExpression.getOperand();
+        hasSeenNoneLValue = false;
+
+        // This accept call, may change hasSeenNoneLValue
         Type operandType = operand.accept(this);
+        boolean isOperandLHS = !hasSeenNoneLValue;
+        hasSeenNoneLValue = true;
         UnaryOperator unaryOperator = unaryExpression.getOperator();
 
         if (isOperandVoidMethodCall(operand, operandType)) {
@@ -395,19 +409,30 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 unaryOperator == UnaryOperator.postdec ||
                 unaryOperator == UnaryOperator.predec
         ) {
-            if (isSubtype(operandType, new IntType()) && isValidLHS(operand, operandType)) {
-                return new IntType();
-            } else if (!isSubtype(operandType, new IntType())) {
-                unaryExpression.addError(new UnsupportedOperandType(unaryExpression.getLine(), unaryOperator.name()));
-                return new NoType();
-            } else {
+            boolean isExpressionCorrect = true;
+            if (!isOperandLHS) {
                 unaryExpression.addError(new IncDecOperandNotLvalue(unaryExpression.getLine(), unaryOperator.name()));
+                isExpressionCorrect = false;
+            }
+            if (operandType instanceof NoType) {
+                isExpressionCorrect = false;
+            }
+            if (!isSubtype(operandType, new IntType())) {
+                unaryExpression.addError(new UnsupportedOperandType(unaryExpression.getLine(), unaryOperator.name()));
+                isExpressionCorrect = false;
+            }
+
+            if (isExpressionCorrect) {
+                return new IntType();
+            } else {
                 return new NoType();
             }
         }
 
         if (unaryOperator == UnaryOperator.minus) {
-            if (isSubtype(operandType, new IntType())) {
+            if (operandType instanceof NoType) {
+                return new NoType();
+            } else if (isSubtype(operandType, new IntType())) {
                 return new IntType();
             } else {
                 unaryExpression.addError(new UnsupportedOperandType(unaryExpression.getLine(), unaryOperator.name()));
@@ -415,10 +440,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             }
         }
 
-        if (
-                unaryOperator == UnaryOperator.not
-        ) {
-            if (isSubtype(operandType, new BoolType())) {
+        if (unaryOperator == UnaryOperator.not) {
+            if (operandType instanceof NoType) {
+                return new NoType();
+            } else if (isSubtype(operandType, new BoolType())) {
                 return new BoolType();
             } else {
                 unaryExpression.addError(new UnsupportedOperandType(unaryExpression.getLine(), unaryOperator.name()));
@@ -434,10 +459,12 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         boolean isInstanceNoType = false;
 
         Expression instance = objectOrListMemberAccess.getInstance();
-        //(a.b()).c = 5;
+
         boolean temp = hasSeenNoneLValue;
         Type instanceType = instance.accept(this);
-        hasSeenNoneLValue = temp;
+        if (instance instanceof ThisClass) {
+            hasSeenNoneLValue = temp;
+        }
 
         if (instanceType instanceof NoType) {
             isInstanceNoType = true;
@@ -537,7 +564,6 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(MethodCall methodCall) {
-        hasSeenNoneLValue = true;
         Expression instance = methodCall.getInstance();
         Type instanceType = instance.accept(this);
 
@@ -548,6 +574,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             Type expType = exp.accept(this);
             passedArgTypes.add(expType);
         }
+        hasSeenNoneLValue = true;
 
         if (instanceType instanceof FptrType) {
             ArrayList<Type> methodArgsTypes = ((FptrType) instanceType).getArgumentsTypes();
@@ -596,6 +623,8 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             passedArgs.add(expType);
         }
 
+        hasSeenNoneLValue = true;
+
         try {
             constructorArgs = ((ClassSymbolTableItem) SymbolTable.root.getItem
                     (
@@ -628,6 +657,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(ThisClass thisClass) {
+        hasSeenNoneLValue = true;
         return new ClassType(currentClassDeclaration.getClassName());
     }
 
@@ -643,6 +673,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             }
             elementsTypes.add(new ListNameType(expType));
         }
+        hasSeenNoneLValue = true;
         return new ListType(elementsTypes);
     }
 

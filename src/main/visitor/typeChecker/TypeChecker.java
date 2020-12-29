@@ -301,6 +301,7 @@ public class TypeChecker extends Visitor<Void> {
     public Void visit(AssignmentStmt assignmentStmt) {
         Expression lValue = assignmentStmt.getlValue();
         Expression rValue = assignmentStmt.getrValue();
+        hasSeenNoneLValue = false;
         Type lValueType = lValue.accept(expressionTypeChecker);
         Type rValueType = rValue.accept(expressionTypeChecker);
 
@@ -317,7 +318,7 @@ public class TypeChecker extends Visitor<Void> {
         boolean isLValueNoType = lValueType instanceof NoType;
         boolean isRValueNoType = rValueType instanceof NoType;
 
-        if (!expressionTypeChecker.isValidLHS(lValue, lValueType) && !isLValueNoType) {
+        if (hasSeenNoneLValue) {
             assignmentStmt.addError(new LeftSideNotLvalue(assignmentStmt.getLine()));
         } else if (!(isLValueNoType || isRValueNoType || expressionTypeChecker.isSubtype(rValueType, lValueType))) {
             assignmentStmt.addError(new UnsupportedOperandType(assignmentStmt.getLine(), BinaryOperator.assign.name()));
