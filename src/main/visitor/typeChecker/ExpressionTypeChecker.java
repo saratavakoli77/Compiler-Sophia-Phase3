@@ -1,5 +1,6 @@
 package main.visitor.typeChecker;
 
+import main.ast.nodes.declaration.classDec.classMembersDec.ConstructorDeclaration;
 import main.ast.nodes.declaration.variableDec.VarDeclaration;
 import main.ast.nodes.expression.*;
 import main.ast.nodes.expression.operators.UnaryOperator;
@@ -124,28 +125,28 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         return false;
     }
 
-    public boolean isEqualitySupported(Type firstOperand, Type secondOperand) {
-        if (firstOperand instanceof ListType || secondOperand instanceof ListType) {
+    public boolean isEqualitySupported(Type firstOperandType, Type secondOperandType) {
+        if (firstOperandType instanceof ListType || secondOperandType instanceof ListType) {
             return false;
         }
 
 
-        if (firstOperand instanceof NoType || secondOperand instanceof NoType) {
+        if (firstOperandType instanceof NoType || secondOperandType instanceof NoType) {
             return false;
         }
 
-        if (firstOperand.toString().equals(secondOperand.toString())) {
+        if (firstOperandType.toString().equals(secondOperandType.toString())) {
             return true;
         }
 
         if (
                 (
-                        firstOperand instanceof NullType &&
-                        (secondOperand instanceof ClassType || secondOperand instanceof FptrType)
+                        firstOperandType instanceof NullType &&
+                        (secondOperandType instanceof ClassType || secondOperandType instanceof FptrType)
                 ) ||
                 (
-                        secondOperand instanceof NullType &&
-                        (firstOperand instanceof ClassType || firstOperand instanceof FptrType)
+                        secondOperandType instanceof NullType &&
+                        (firstOperandType instanceof ClassType || firstOperandType instanceof FptrType)
                 )
         ) {
             return true;
@@ -481,7 +482,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
         Identifier memberName = objectOrListMemberAccess.getMemberName();
         if (instanceType instanceof ClassType) {
-            return classMemberAccess(objectOrListMemberAccess, (ClassType) instanceType, memberName);
+            SymbolTable preSymbolTable = currentSymbolTable;
+            Type classMemberType = classMemberAccess(objectOrListMemberAccess, (ClassType) instanceType, memberName);
+            currentSymbolTable = preSymbolTable;
+            return classMemberType;
         }
         else if (instanceType instanceof ListType) {
             return listMemberAccess(objectOrListMemberAccess, (ListType) instanceType, memberName);
@@ -617,6 +621,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         ArrayList<Expression> newClassInstanceArgs = newClassInstance.getArgs();
         ArrayList<Type> passedArgs = new ArrayList<>();
         ArrayList<VarDeclaration> constructorArgs;
+        ConstructorDeclaration constructor;
 
         for (Expression exp: newClassInstanceArgs) {
             Type expType = exp.accept(this);
@@ -626,27 +631,34 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         hasSeenNoneLValue = true;
 
         try {
-            constructorArgs = ((ClassSymbolTableItem) SymbolTable.root.getItem
+            constructor = ((ClassSymbolTableItem) SymbolTable.root.getItem
                     (
                             ClassSymbolTableItem.START_KEY + classType.getClassName().getName(),
                             true
                     )
-            ).getClassDeclaration().getConstructor().getArgs();
-
-            boolean sizeMatch = false;
-            boolean argTypesMatch = true;
-            if (constructorArgs.size() == passedArgs.size()) {
-                sizeMatch = true;
-                for (int i = 0; i < passedArgs.size(); i++) {
-                    if (!isSubtype(passedArgs.get(i), constructorArgs.get(i).getType())) {
-                        argTypesMatch = false;
-                        break;
+            ).getClassDeclaration().getConstructor();
+            if (constructor == null) {
+                if (!passedArgs.isEmpty()) {
+                    newClassInstance.addError(new ConstructorArgsNotMatchDefinition(newClassInstance));
+                    return new NoType();
+                }
+            } else {
+                constructorArgs = constructor.getArgs();
+                boolean sizeMatch = false;
+                boolean argTypesMatch = true;
+                if (constructorArgs.size() == passedArgs.size()) {
+                    sizeMatch = true;
+                    for (int i = 0; i < passedArgs.size(); i++) {
+                        if (!isSubtype(passedArgs.get(i), constructorArgs.get(i).getType())) {
+                            argTypesMatch = false;
+                            break;
+                        }
                     }
                 }
-            }
-            if (!sizeMatch || !argTypesMatch) {
-                newClassInstance.addError(new ConstructorArgsNotMatchDefinition(newClassInstance));
-                return new NoType();
+                if (!sizeMatch || !argTypesMatch) {
+                    newClassInstance.addError(new ConstructorArgsNotMatchDefinition(newClassInstance));
+                    return new NoType();
+                }
             }
             return classType;
         } catch (ItemNotFoundException e) {

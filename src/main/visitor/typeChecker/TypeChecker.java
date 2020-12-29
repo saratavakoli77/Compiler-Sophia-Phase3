@@ -79,7 +79,9 @@ public class TypeChecker extends Visitor<Void> {
             if (hashSet.contains(listNameType.getName().getName())) {
                 hasDuplicateKey = true;
             }
-            hashSet.add(listNameType.getName().getName());
+            if (!listNameType.getName().getName().equals("")) {
+                hashSet.add(listNameType.getName().getName());
+            }
         }
         return hasDuplicateKey;
     }
@@ -87,28 +89,6 @@ public class TypeChecker extends Visitor<Void> {
     public TypeChecker(Graph<String> classHierarchy) {
         this.classHierarchy = classHierarchy;
         this.expressionTypeChecker = new ExpressionTypeChecker(classHierarchy);
-
-//        SymbolTable.top = new SymbolTable();
-//        Map<String, SymbolTableItem> items = SymbolTable.root.items;
-//        for (Map.Entry<String, SymbolTableItem> entry : items.entrySet()) {
-//            System.out.println(entry.getKey() + ":" + entry.getValue().getName());
-//        }
-////         SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + "A").getClass();
-//
-//        ClassSymbolTableItem classSymbolTableItem = null;
-//        try {
-//            classSymbolTableItem = (ClassSymbolTableItem) SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + "A", true);
-//        } catch (ItemNotFoundException e) {
-//            System.out.println("class niiiiist");
-//        }
-//        SymbolTable classSymbolTable;
-//        classSymbolTable = classSymbolTableItem.getClassSymbolTable();
-//        try {
-//            System.out.println((classSymbolTable.getItem(MethodSymbolTableItem.START_KEY + "A2", true)).getName());
-//
-//        } catch (ItemNotFoundException e) {
-//            System.out.println("method niiiiist");
-//        }
     }
 
     public boolean isClassMain(ClassDeclaration classDeclaration) {
@@ -242,9 +222,8 @@ public class TypeChecker extends Visitor<Void> {
         SymbolTable preSymbolTable = currentSymbolTable;
         setCurrentSymbolTable(methodDeclaration.getMethodName().getName());
 
-        checkMethodDeclaration(methodDeclaration);
-
         doesReturnStatementExist = false;
+        checkMethodDeclaration(methodDeclaration);
 
         Type returnType = methodDeclaration.getReturnType();
 
@@ -400,7 +379,7 @@ public class TypeChecker extends Visitor<Void> {
         Identifier variable = foreachStmt.getVariable();
         Expression list = foreachStmt.getList();
         Statement body = foreachStmt.getBody();
-
+        nestedLoopsCount += 1;
         Type variableType = variable.accept(expressionTypeChecker);
         Type listType = list.accept(expressionTypeChecker);
 
