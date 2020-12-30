@@ -1,0 +1,3 @@
+Line:3:Method f2 needs return statement
+Line:15:Method foo needs return statement
+Line:21:Method bar needs return statement

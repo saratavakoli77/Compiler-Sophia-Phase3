@@ -1,0 +1,70 @@
+class A {
+
+    def int f2() {
+        if (2 == 2) {
+            return 1;
+        } else if (1 == 1) {
+            return 2;
+        }
+    }
+
+    def void foo1() {
+        return;
+    }
+
+    def string foo() {
+        if (1 == 1) {
+            return "s";
+        }
+    }
+
+    def int bar(a:int) {
+
+        i: int;
+        for(i = 0; i < 6; i = i + 1) {
+            return 1;
+        }
+    }
+
+    def int f1() {
+        if (2 == 2) {
+            return 1;
+        } else {
+            return 2;
+        }
+    }
+
+    def int f3() {
+        if (2 == 2) {
+            return 1;
+        } else if (1 == 1) {
+            return 2;
+        } else {
+            return 5;
+        }
+    }
+
+    def int f4() {
+        if (2 == 2) {
+            return 1;
+        } else {
+            print("hi");
+        }
+        return 1;
+    }
+
+    def int f5() {
+        if (2 == 2) {
+            return 1;
+        } else if (1 == 1) {
+            return 2;
+        }
+        return 3;
+    }
+}
+
+class Main {
+    def Main () {
+
+    }
+}

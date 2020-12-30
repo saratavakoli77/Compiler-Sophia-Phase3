@@ -40,6 +40,7 @@ import java.util.Set;
 public class TypeChecker extends Visitor<Void> {
     private final Graph<String> classHierarchy;
     private final ExpressionTypeChecker expressionTypeChecker;
+    private final ReturnStatementCheckerInNonVoidMethods returnStatementCheckerInNonVoidMethods;
 
     public Void checkMethodDeclaration(MethodDeclaration methodDeclaration) {
         ArrayList<VarDeclaration> args = methodDeclaration.getArgs();
@@ -116,6 +117,7 @@ public class TypeChecker extends Visitor<Void> {
     public TypeChecker(Graph<String> classHierarchy) {
         this.classHierarchy = classHierarchy;
         this.expressionTypeChecker = new ExpressionTypeChecker(classHierarchy);
+        this.returnStatementCheckerInNonVoidMethods = new ReturnStatementCheckerInNonVoidMethods();
     }
 
     public boolean isClassMain(ClassDeclaration classDeclaration) {
@@ -249,7 +251,7 @@ public class TypeChecker extends Visitor<Void> {
     public Void visit(MethodDeclaration methodDeclaration) {
         SymbolTable preSymbolTable = currentSymbolTable;
         setCurrentSymbolTable(methodDeclaration.getMethodName().getName());
-        doesReturnStatementExist = false;
+//        doesReturnStatementExist = false;
         Type returnType = methodDeclaration.getReturnType();
         validateVarType(returnType, methodDeclaration);
         currentReturnType = returnType;
@@ -264,12 +266,13 @@ public class TypeChecker extends Visitor<Void> {
             currentReturnType = new NoType();
         }
 
-        boolean isMethodVoid = returnType instanceof NullType;
+//        boolean isMethodVoid = returnType instanceof NullType;
 
-        if (!isMethodVoid && !doesReturnStatementExist) {
-            methodDeclaration.addError(new MissingReturnStatement(methodDeclaration));
-        }
+//        if (!isMethodVoid && !doesReturnStatementExist) {
+//            methodDeclaration.addError(new MissingReturnStatement(methodDeclaration));
+//        }
 
+        returnStatementCheckerInNonVoidMethods.isReturnStatementAvailableInMethodDeclaration(methodDeclaration);
         currentSymbolTable = preSymbolTable;
         currentReturnType = null;
 
@@ -370,7 +373,7 @@ public class TypeChecker extends Visitor<Void> {
         if (!expressionTypeChecker.isSubtype(returnType, currentReturnType)) {
             returnStmt.addError(new ReturnValueNotMatchMethodReturnType(returnStmt));
         }
-        doesReturnStatementExist = true;
+//        doesReturnStatementExist = true;
         return null;
     }
 
