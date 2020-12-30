@@ -1,5 +1,6 @@
 package main.visitor.typeChecker;
 
+import main.ast.nodes.Node;
 import main.ast.nodes.Program;
 import main.ast.nodes.declaration.classDec.ClassDeclaration;
 import main.ast.nodes.declaration.classDec.classMembersDec.ConstructorDeclaration;
@@ -59,26 +60,26 @@ public class TypeChecker extends Visitor<Void> {
         return null;
     }
 
-    public void validateVarType(Type varDecType, VarDeclaration varDeclaration) {
+    public void validateVarType(Type varDecType, Node node) {
         if (varDecType instanceof ClassType) {
             String className = ((ClassType) varDecType).getClassName().getName();
             boolean doesClassExist = classHierarchy.doesGraphContainNode(className);
             if (!doesClassExist) {
-                varDeclaration.addError(new ClassNotDeclared(varDeclaration.getLine(), className));
+                node.addError(new ClassNotDeclared(node.getLine(), className));
             }
         } else if (varDecType instanceof ListType) {
             if (((ListType) varDecType).getElementsTypes().size() == 0) {
-                varDeclaration.addError(new CannotHaveEmptyList(varDeclaration.getLine()));
+                node.addError(new CannotHaveEmptyList(node.getLine()));
             }
-            boolean listHasDuplicateKey = checkListHasDuplicateKey((ListType) varDecType, varDeclaration);
+            boolean listHasDuplicateKey = checkListHasDuplicateKey((ListType) varDecType, node);
             if (listHasDuplicateKey) {
-                varDeclaration.addError(new DuplicateListId(varDeclaration.getLine()));
+                node.addError(new DuplicateListId(node.getLine()));
             }
         } else if (varDecType instanceof FptrType) {
-            validateVarType(((FptrType) varDecType).getReturnType(), varDeclaration);
+            validateVarType(((FptrType) varDecType).getReturnType(), node);
             ArrayList<Type> argumentsTypes = ((FptrType) varDecType).getArgumentsTypes();
             for (Type argumentType : argumentsTypes) {
-                validateVarType(argumentType, varDeclaration);
+                validateVarType(argumentType, node);
             }
         }
     }
@@ -94,14 +95,14 @@ public class TypeChecker extends Visitor<Void> {
         return false;
     }
 
-    public boolean checkListHasDuplicateKey(ListType listType, VarDeclaration varDeclaration) {
+    public boolean checkListHasDuplicateKey(ListType listType, Node node) {
         ArrayList<ListNameType> listElementTypes = listType.getElementsTypes();
         boolean hasDuplicateKey = false;
         Set<String> hashSet = new HashSet<String>();
         for (ListNameType listNameType : listElementTypes) {
 //            VarDeclaration varDeclaration = new VarDeclaration(listNameType.getName(), listNameType.getType());
 //            varDeclaration.accept(this);
-            validateVarType(listNameType.getType(), varDeclaration);
+            validateVarType(listNameType.getType(), node);
             if (hashSet.contains(listNameType.getName().getName())) {
                 hasDuplicateKey = true;
             }
@@ -236,6 +237,7 @@ public class TypeChecker extends Visitor<Void> {
         if (!constructorDeclaration.getMethodName().getName().equals(currentClassDeclarationName)) {
             constructorDeclaration.addError(new ConstructorNotSameNameAsClass(constructorDeclaration.getLine()));
         }
+        currentReturnType = currentClassDeclaration.getConstructor().getReturnType();
 
         checkMethodDeclaration(constructorDeclaration);
 
@@ -249,6 +251,7 @@ public class TypeChecker extends Visitor<Void> {
         setCurrentSymbolTable(methodDeclaration.getMethodName().getName());
         doesReturnStatementExist = false;
         Type returnType = methodDeclaration.getReturnType();
+        validateVarType(returnType, methodDeclaration);
         currentReturnType = returnType;
 
         checkMethodDeclaration(methodDeclaration);
@@ -408,7 +411,7 @@ public class TypeChecker extends Visitor<Void> {
                     foreachStmt.addError(new ForeachVarNotMatchList(foreachStmt));
                 }
             }
-        } else {
+        } else if (!(listType instanceof NoType)){
             //todo getLine bayad az list bashe ya az foreach
             foreachStmt.addError(new ForeachCantIterateNoneList(foreachStmt.getLine()));
         }

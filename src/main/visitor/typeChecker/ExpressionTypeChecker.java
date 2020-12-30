@@ -1,5 +1,6 @@
 package main.visitor.typeChecker;
 
+import main.ast.nodes.Node;
 import main.ast.nodes.declaration.classDec.classMembersDec.ConstructorDeclaration;
 import main.ast.nodes.declaration.variableDec.VarDeclaration;
 import main.ast.nodes.expression.*;
@@ -28,6 +29,8 @@ import main.symbolTable.utils.graph.Graph;
 import main.visitor.Visitor;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 
 public class ExpressionTypeChecker extends Visitor<Type> {
@@ -35,6 +38,52 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     public ExpressionTypeChecker(Graph<String> classHierarchy) {
         this.classHierarchy = classHierarchy;
+    }
+
+    public boolean checkVarListType(ListType listType) {
+        ArrayList<ListNameType> listElementTypes = listType.getElementsTypes();
+        boolean hasDuplicateKey = false;
+        boolean validNameType = true;
+        Set<String> hashSet = new HashSet<String>();
+        for (ListNameType listNameType : listElementTypes) {
+            if (!validateVarType(listNameType.getType())) {
+                validNameType = false;
+            }
+            if (hashSet.contains(listNameType.getName().getName())) {
+                hasDuplicateKey = true;
+            }
+            if (!listNameType.getName().getName().equals("")) {
+                hashSet.add(listNameType.getName().getName());
+            }
+        }
+        return !hasDuplicateKey && validNameType ;
+    }
+
+    public boolean validateVarType(Type varDecType) {
+        if (varDecType instanceof ClassType) {
+            String className = ((ClassType) varDecType).getClassName().getName();
+            //                node.addError(new ClassNotDeclared(node.getLine(), className));
+            return classHierarchy.doesGraphContainNode(className);
+        } else if (varDecType instanceof ListType) {
+            if (((ListType) varDecType).getElementsTypes().size() == 0) {
+//                node.addError(new CannotHaveEmptyList(node.getLine()));
+                return false;
+            }
+            //                node.addError(new DuplicateListId(node.getLine()));
+            return checkVarListType((ListType) varDecType);
+        } else if (varDecType instanceof FptrType) {
+            boolean validReturnType = validateVarType(((FptrType) varDecType).getReturnType());
+            boolean validArgument = true;
+            ArrayList<Type> argumentsTypes = ((FptrType) varDecType).getArgumentsTypes();
+            for (Type argumentType : argumentsTypes) {
+                if (!validateVarType(argumentType)) {
+                    validArgument = false;
+                    break;
+                }
+            }
+            return validArgument && validReturnType;
+        }
+        return true;
     }
 
     public boolean isClassSubtype(ClassType subType, ClassType superType) {
@@ -91,6 +140,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         }
 
         if (subType instanceof StringType && superType instanceof StringType) {
+            return true;
+        }
+
+        if (subType instanceof NullType && superType instanceof NullType) {
             return true;
         }
 
@@ -213,7 +266,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             try {
                 FieldSymbolTableItem fieldSymbolTableItem = (FieldSymbolTableItem) currentSymbolTable.getItem(FieldSymbolTableItem.START_KEY + memberName, true);
                 Type fieldType = fieldSymbolTableItem.getType();
-                if (!doesClassTypeExist(fieldType)) {
+                if (!validateVarType(fieldType)) {
                     return new NoType();
                 }
                 return fieldType;
@@ -263,7 +316,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             objectOrListMemberAccess.addError(new ListMemberNotFound(objectOrListMemberAccess.getLine(), memberNameStr));
             return new NoType();
         }
-        if (!doesClassTypeExist(memberNameType)) {
+        if (!validateVarType(memberNameType)) {
             return new NoType();
         }
         return memberNameType;
@@ -277,16 +330,16 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 //        return false;
 //    }
 
-    public boolean doesClassTypeExist(Type type) {
-        if (type instanceof ClassType) {
-            try {
-                SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + ((ClassType) type).getClassName().getName(), true);
-            } catch (ItemNotFoundException e) {
-                return false;
-            }
-        }
-        return true;
-    }
+//    public boolean doesClassTypeExist(Type type) {
+//        if (type instanceof ClassType) {
+//            try {
+//                SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + ((ClassType) type).getClassName().getName(), true);
+//            } catch (ItemNotFoundException e) {
+//                return false;
+//            }
+//        }
+//        return true;
+//    }
 
     @Override
     public Type visit(BinaryExpression binaryExpression) {
@@ -489,10 +542,11 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             objectOrListMemberAccess.addError(new MemberAccessOnNoneObjOrListType(objectOrListMemberAccess.getLine()));
         }
 
-        if (!isInstanceCorrect) {
+        if (!isInstanceCorrect || isInstanceNoType) {
             return new NoType();
         }
 
+        //member is identifier so it doesn't need accept
         Identifier memberName = objectOrListMemberAccess.getMemberName();
         if (instanceType instanceof ClassType) {
             SymbolTable preSymbolTable = currentSymbolTable;
@@ -500,11 +554,11 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             currentSymbolTable = preSymbolTable;
             return classMemberType;
         }
-        else if (instanceType instanceof ListType) {
+        // so instanceType is instanceof ListType
+        else {
             return listMemberAccess(objectOrListMemberAccess, (ListType) instanceType, memberName);
         }
 
-        return null;
     }
 
     @Override
@@ -517,7 +571,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                     );
             //todo: is it ok?
             Type idType = localVariableSymbolTableItem.getType();
-            if (!doesClassTypeExist(idType)) {
+            if (!validateVarType(idType)) {
                 return new NoType();
             }
             return localVariableSymbolTableItem.getType();
@@ -569,7 +623,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
         if (isInstanceCorrect && isIndexCorrect) {
             Type elementType = findListElementTypeByIndex((ListType) instanceType, index, isListSingleType);
-            if (!doesClassTypeExist(elementType)) {
+            if (!validateVarType(elementType)) {
                 return new NoType();
             }
             return elementType;
@@ -622,7 +676,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 methodCall.addError(new MethodCallNotMatchDefinition(methodCall.getLine()));
                 return new NoType();
             }
-            if (!doesClassTypeExist(returnType)) {
+            if (!validateVarType(returnType)) {
                 return new NoType();
             }
             return returnType;
