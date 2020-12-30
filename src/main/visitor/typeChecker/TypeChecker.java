@@ -295,15 +295,15 @@ public class TypeChecker extends Visitor<Void> {
         hasSeenNoneLValue = false;
         Type lValueType = lValue.accept(expressionTypeChecker);
 
-        if (expressionTypeChecker.isOperandVoidMethodCall(lValue, lValueType)) {
-            assignmentStmt.addError(new CantUseValueOfVoidMethod(assignmentStmt.getLine()));
-            lValueType = new NoType();
-        }
-
-        if (expressionTypeChecker.isOperandVoidMethodCall(rValue, rValueType)) {
-            assignmentStmt.addError(new CantUseValueOfVoidMethod(assignmentStmt.getLine()));
-            rValueType = new NoType();
-        }
+//        if (expressionTypeChecker.isOperandVoidMethodCall(lValue, lValueType)) {
+//            assignmentStmt.addError(new CantUseValueOfVoidMethod(assignmentStmt.getLine()));
+//            lValueType = new NoType();
+//        }
+//
+//        if (expressionTypeChecker.isOperandVoidMethodCall(rValue, rValueType)) {
+//            assignmentStmt.addError(new CantUseValueOfVoidMethod(assignmentStmt.getLine()));
+//            rValueType = new NoType();
+//        }
 
         boolean isLValueNoType = lValueType instanceof NoType;
         boolean isRValueNoType = rValueType instanceof NoType;

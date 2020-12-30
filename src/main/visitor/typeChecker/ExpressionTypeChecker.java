@@ -269,13 +269,13 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         return memberNameType;
     }
 
-    public boolean isOperandVoidMethodCall(Expression operand, Type operandType) {
-//        if (operand instanceof MethodCall) {
-//            return operandType instanceof NullType;
-//        }
+//    public boolean isOperandVoidMethodCall(Expression operand, Type operandType) {
+////        if (operand instanceof MethodCall) {
+////            return operandType instanceof NullType;
+////        }
+////        return false;
 //        return false;
-        return false;
-    }
+//    }
 
     public boolean doesClassTypeExist(Type type) {
         if (type instanceof ClassType) {
@@ -301,15 +301,15 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         boolean isFirstOperandNoType= false;
         boolean isSecondOperandNoType = false;
 
-        if (isOperandVoidMethodCall(firstOperand, firstOperandType)) {
-            binaryExpression.addError(new CantUseValueOfVoidMethod(binaryExpression.getLine()));
-            firstOperandType = new NoType();
-        }
-
-        if (isOperandVoidMethodCall(secondOperand, secondOperandType)) {
-            binaryExpression.addError(new CantUseValueOfVoidMethod(binaryExpression.getLine()));
-            secondOperandType = new NoType();
-        }
+//        if (isOperandVoidMethodCall(firstOperand, firstOperandType)) {
+//            binaryExpression.addError(new CantUseValueOfVoidMethod(binaryExpression.getLine()));
+//            firstOperandType = new NoType();
+//        }
+//
+//        if (isOperandVoidMethodCall(secondOperand, secondOperandType)) {
+//            binaryExpression.addError(new CantUseValueOfVoidMethod(binaryExpression.getLine()));
+//            secondOperandType = new NoType();
+//        }
 
         if (firstOperandType instanceof NoType) {
             isFirstOperandNoType = true;
@@ -412,10 +412,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         hasSeenNoneLValue = true;
         UnaryOperator unaryOperator = unaryExpression.getOperator();
 
-        if (isOperandVoidMethodCall(operand, operandType)) {
-            unaryExpression.addError(new CantUseValueOfVoidMethod(unaryExpression.getLine()));
-            operandType = new NoType();
-        }
+//        if (isOperandVoidMethodCall(operand, operandType)) {
+//            unaryExpression.addError(new CantUseValueOfVoidMethod(unaryExpression.getLine()));
+//            operandType = new NoType();
+//        }
 
         if (
                 unaryOperator == UnaryOperator.postinc ||
@@ -612,10 +612,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                     if (!isSubtype(passedArgTypes.get(i), methodArgsTypes.get(i))) {
                         argTypesMatch = false;
                     }
-                    if (isOperandVoidMethodCall(passedArgs.get(i), passedArgTypes.get(i))) {
-                        passedArgs.get(i).addError(new CantUseValueOfVoidMethod(passedArgs.get(i).getLine()));
-                        argTypesMatch = false;
-                    }// todo: should i set to noType? or get 2 errors
+//                    if (isOperandVoidMethodCall(passedArgs.get(i), passedArgTypes.get(i))) {
+//                        passedArgs.get(i).addError(new CantUseValueOfVoidMethod(passedArgs.get(i).getLine()));
+//                        argTypesMatch = false;
+//                    }//
                 }
             }
             if (!sizeMatch || !argTypesMatch) {
@@ -701,10 +701,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         ArrayList<ListNameType> elementsTypes = new ArrayList<>();
         for (Expression exp: listValueElements) {
             Type expType = exp.accept(this);
-            if (isOperandVoidMethodCall(exp, expType)) {
-                exp.addError(new CantUseValueOfVoidMethod(exp.getLine()));
-                expType = new NoType();
-            }
+//            if (isOperandVoidMethodCall(exp, expType)) {
+//                exp.addError(new CantUseValueOfVoidMethod(exp.getLine()));
+//                expType = new NoType();
+//            }
             elementsTypes.add(new ListNameType(expType));
         }
         hasSeenNoneLValue = true;
