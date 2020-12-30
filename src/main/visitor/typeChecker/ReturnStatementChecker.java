@@ -1,6 +1,5 @@
 package main.visitor.typeChecker;
 
-
 import main.ast.nodes.declaration.classDec.classMembersDec.MethodDeclaration;
 import main.ast.nodes.statement.*;
 import main.ast.nodes.statement.loop.BreakStmt;
@@ -12,7 +11,7 @@ import main.compileErrorException.typeErrors.MissingReturnStatement;
 
 import java.util.ArrayList;
 
-public class ReturnStatementCheckerInNonVoidMethods {
+public class ReturnStatementChecker {
 
     private Boolean doesStatementReturn(Statement statement) {
         if (statement instanceof ConditionalStmt) {
@@ -65,7 +64,7 @@ public class ReturnStatementCheckerInNonVoidMethods {
         return doesThenReturn && doesElseReturn;
     }
 
-    public Void isReturnStatementAvailableInMethodDeclaration(MethodDeclaration methodDeclaration) {
+    public Void isReturnStatementAvailable(MethodDeclaration methodDeclaration) {
         if (methodDeclaration.getReturnType() instanceof NullType) {
             return null;
         }

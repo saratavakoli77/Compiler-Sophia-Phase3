@@ -29,7 +29,7 @@ public class Visitor<T> implements IVisitor<T> {
 
     public static Type currentReturnType;
 
-    public static boolean doesReturnStatementExist;
+//    public static boolean doesReturnStatementExist;
 
     public static int nestedLoopsCount = 0;
 

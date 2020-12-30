@@ -16,7 +16,6 @@ import main.ast.nodes.statement.loop.ContinueStmt;
 import main.ast.nodes.statement.loop.ForStmt;
 import main.ast.nodes.statement.loop.ForeachStmt;
 import main.ast.types.NoType;
-import main.ast.types.NullType;
 import main.ast.types.Type;
 import main.ast.types.functionPointer.FptrType;
 import main.ast.types.list.ListNameType;
@@ -40,7 +39,8 @@ import java.util.Set;
 public class TypeChecker extends Visitor<Void> {
     private final Graph<String> classHierarchy;
     private final ExpressionTypeChecker expressionTypeChecker;
-    private final ReturnStatementCheckerInNonVoidMethods returnStatementCheckerInNonVoidMethods;
+    private final ReturnStatementChecker returnStatementChecker;
+    private final UnreachableStmtChecker unreachableStmtChecker;
 
     public Void checkMethodDeclaration(MethodDeclaration methodDeclaration) {
         ArrayList<VarDeclaration> args = methodDeclaration.getArgs();
@@ -117,7 +117,8 @@ public class TypeChecker extends Visitor<Void> {
     public TypeChecker(Graph<String> classHierarchy) {
         this.classHierarchy = classHierarchy;
         this.expressionTypeChecker = new ExpressionTypeChecker(classHierarchy);
-        this.returnStatementCheckerInNonVoidMethods = new ReturnStatementCheckerInNonVoidMethods();
+        this.returnStatementChecker = new ReturnStatementChecker();
+        this.unreachableStmtChecker = new UnreachableStmtChecker();
     }
 
     public boolean isClassMain(ClassDeclaration classDeclaration) {
@@ -242,6 +243,7 @@ public class TypeChecker extends Visitor<Void> {
         currentReturnType = currentClassDeclaration.getConstructor().getReturnType();
 
         checkMethodDeclaration(constructorDeclaration);
+        unreachableStmtChecker.checkMethodReachable(constructorDeclaration);
 
         currentSymbolTable = preSymbolTable;
         return null;
@@ -266,13 +268,8 @@ public class TypeChecker extends Visitor<Void> {
             currentReturnType = new NoType();
         }
 
-//        boolean isMethodVoid = returnType instanceof NullType;
-
-//        if (!isMethodVoid && !doesReturnStatementExist) {
-//            methodDeclaration.addError(new MissingReturnStatement(methodDeclaration));
-//        }
-
-        returnStatementCheckerInNonVoidMethods.isReturnStatementAvailableInMethodDeclaration(methodDeclaration);
+        returnStatementChecker.isReturnStatementAvailable(methodDeclaration);
+        unreachableStmtChecker.checkMethodReachable(methodDeclaration);
         currentSymbolTable = preSymbolTable;
         currentReturnType = null;
 
