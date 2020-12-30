@@ -1,0 +1,116 @@
+class A {
+
+    def int f2() {
+        if (1 == 1) {
+            return 1;
+            print("samm1");
+        } else {
+            break;
+            print("samm break");
+            return 2;
+            print("samm2");
+        }
+        print("samm");
+    }
+
+    def int foo1() {
+        if (1 == 1) {
+            return 1;
+            print("samm1");
+        }
+        print("samm");
+    }
+
+    def int foo() {
+        i: int;
+        for (i = 0; i < 6; i = i + 1) {
+            return 1;
+            print("nooo");
+        }
+        print("samm after for");
+    }
+
+    def int bar(a:int) {
+        i: int;
+        for (i = 0; i < 6; i = i + 1) {
+            continue;
+            print("nooo");
+        }
+        print("samm after for");
+    }
+
+    def int f1() {
+        i: int;
+        for (i = 0; i < 6; i = i + 1) {
+            if (true) {
+                return 1;
+            }
+            print("nooo");
+        }
+        print("samm after for");
+    }
+
+    def int f3() {
+        i: int;
+        for (i = 0; i < 6; i = i + 1) {
+            if (1 == 1) {
+                break;
+                print("noooo");
+            } else {
+                break;
+                print("noooo2");
+            }
+            print("nooo");
+        }
+        print("samm after for");
+    }
+
+    def int f4() {
+        if (1 == 1) {
+            return 1;
+        } else if (2 == 2) {
+            return 2;
+        } else {
+            return 3;
+        }
+        print("nooo :(");
+    }
+
+    def int f5() {
+        print("no");
+        return 1;
+        print("noo");
+        print("nooo");
+        return 2;
+        print("noooo");
+        print("nooooo");
+    }
+
+    def int f6() {
+        i: int;
+        for (i = 0; i < 6; i = i + 1) {
+            print("no");
+            break;
+            if (1 == 1) {
+                return 1;
+                print("noo1");
+            } else if (2 == 2) {
+                return 2;
+                print("noo2");
+            } else {
+                return 3;
+                print("noo3");
+            }
+            print("noo");
+        }
+        print("nooo");
+        return 1;
+        print("noo");
+    }
+}
+
+class Main {
+    def Main () {
+
+    }
+}

@@ -1,0 +1,24 @@
+Line:6:Statements are unreachable
+Line:8:Break statement not within loop
+Line:11:Statements are unreachable
+Line:13:Statements are unreachable
+Line:16:Method foo1 needs return statement
+Line:19:Statements are unreachable
+Line:24:Method foo needs return statement
+Line:28:Statements are unreachable
+Line:33:Method bar needs return statement
+Line:37:Statements are unreachable
+Line:42:Method f1 needs return statement
+Line:53:Method f3 needs return statement
+Line:58:Statements are unreachable
+Line:61:Statements are unreachable
+Line:63:Statements are unreachable
+Line:76:Statements are unreachable
+Line:82:Statements are unreachable
+Line:85:Statements are unreachable
+Line:94:Statements are unreachable
+Line:96:Statements are unreachable
+Line:99:Statements are unreachable
+Line:102:Statements are unreachable
+Line:104:Statements are unreachable
+Line:108:Statements are unreachable
