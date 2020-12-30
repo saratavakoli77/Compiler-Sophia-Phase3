@@ -404,13 +404,14 @@ public class TypeChecker extends Visitor<Void> {
             boolean isListSingleType = expressionTypeChecker.isAllElementsHaveSameType((ListType) listType);
             if (!isListSingleType) {
                 foreachStmt.addError(new ForeachListElementsNotSameType(foreachStmt.getLine()));
-            } else {
-                ArrayList<ListNameType> elementNameTypes = ((ListType) listType).getElementsTypes();
-                Type firstElementType = elementNameTypes.get(0).getType();
-                if (!variableType.toString().equals(firstElementType.toString())) {
-                    foreachStmt.addError(new ForeachVarNotMatchList(foreachStmt));
-                }
             }
+
+            ArrayList<ListNameType> elementNameTypes = ((ListType) listType).getElementsTypes();
+            Type firstElementType = elementNameTypes.get(0).getType();
+            if (!variableType.toString().equals(firstElementType.toString())) {
+                foreachStmt.addError(new ForeachVarNotMatchList(foreachStmt));
+            }
+
         } else if (!(listType instanceof NoType)){
             //todo getLine bayad az list bashe ya az foreach
             foreachStmt.addError(new ForeachCantIterateNoneList(foreachStmt.getLine()));
