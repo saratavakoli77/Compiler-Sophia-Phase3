@@ -210,27 +210,13 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         return false;
     }
 
-//    public boolean isValidLHS(Expression lhs, Type lhsType) {
-//        if (hasSeenNoneLValue) {
-//            hasSeenNoneLValue = false;
-//            return false;
-//        }
-//        boolean validMember = false;
-//        if (lhs instanceof ObjectOrListMemberAccess) {
-//            validMember = !(lhsType instanceof FptrType);
-//        } //todo: fptr left hand side?
-//        return lhs instanceof Identifier || lhs instanceof ListAccessByIndex || validMember;
-//    }
 
     public boolean isAllElementsHaveSameType(ListType list) {
         ArrayList<ListNameType> elementNameTypes = list.getElementsTypes();
         Type firstElementType = elementNameTypes.get(0).getType();
         for (ListNameType listNameType : elementNameTypes) {
             Type nameType = listNameType.getType();
-//            if (firstElementType instanceof ClassType && nameType instanceof NullType) {
-//                continue;
-//            }
-//            if (!firstElementType.toString().equals(nameType.getType().toString())) {
+
             if (!(
                     firstElementType instanceof NoType ||
                     nameType instanceof  NoType ||
@@ -255,7 +241,6 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         }
     }
 
-    //2=
 
     public Type findMember(String memberName, String className) {
         try {
@@ -327,25 +312,6 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         }
         return memberNameType;
     }
-
-//    public boolean isOperandVoidMethodCall(Expression operand, Type operandType) {
-////        if (operand instanceof MethodCall) {
-////            return operandType instanceof NullType;
-////        }
-////        return false;
-//        return false;
-//    }
-
-//    public boolean doesClassTypeExist(Type type) {
-//        if (type instanceof ClassType) {
-//            try {
-//                SymbolTable.root.getItem(ClassSymbolTableItem.START_KEY + ((ClassType) type).getClassName().getName(), true);
-//            } catch (ItemNotFoundException e) {
-//                return false;
-//            }
-//        }
-//        return true;
-//    }
 
     @Override
     public Type visit(BinaryExpression binaryExpression) {
@@ -471,10 +437,6 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         hasSeenNoneLValue = true;
         UnaryOperator unaryOperator = unaryExpression.getOperator();
 
-//        if (isOperandVoidMethodCall(operand, operandType)) {
-//            unaryExpression.addError(new CantUseValueOfVoidMethod(unaryExpression.getLine()));
-//            operandType = new NoType();
-//        }
 
         if (
                 unaryOperator == UnaryOperator.postinc ||
@@ -575,7 +537,6 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                             LocalVariableSymbolTableItem.START_KEY + identifier.getName(),
                             true
                     );
-            //todo: is it ok?
             Type idType = localVariableSymbolTableItem.getType();
             if (!validateVarType(idType)) {
                 return new NoType();

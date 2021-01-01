@@ -135,7 +135,7 @@ public class TypeChecker extends Visitor<Void> {
                     )
             ).getMethodSymbolTable();
         } catch (ItemNotFoundException e) {
-            System.out.println("something is very wrong :))"); //Todo
+
         }
         return null;
     }
@@ -206,7 +206,7 @@ public class TypeChecker extends Visitor<Void> {
                     )
             ).getClassSymbolTable();
         } catch (ItemNotFoundException e) {
-            System.out.println("something is very wrong2 :))"); //Todo
+
         }
 
 
@@ -232,8 +232,6 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(ConstructorDeclaration constructorDeclaration) {
-        //todo: return type in constructor
-
         SymbolTable preSymbolTable = currentSymbolTable;
         setCurrentSymbolTable(constructorDeclaration.getMethodName().getName());
         String currentClassDeclarationName = currentClassDeclaration.getClassName().getName();
@@ -338,7 +336,6 @@ public class TypeChecker extends Visitor<Void> {
         Statement elseBody = conditionalStmt.getElseBody();
         Type conditionType = condition.accept(expressionTypeChecker);
         if (!(expressionTypeChecker.isSubtype(conditionType, new BoolType()))) {
-            //todo nemidunim ke az conditionalStmt getLine konim ya az contion
             conditionalStmt.addError(new ConditionNotBool(conditionalStmt.getLine()));
         }
         thenBody.accept(this);
@@ -401,7 +398,6 @@ public class TypeChecker extends Visitor<Void> {
         Type variableType = variable.accept(expressionTypeChecker);
         Type listType = list.accept(expressionTypeChecker);
 
-        //todo agar listType noType bud, bayad error bedim ya na?
         if (listType instanceof ListType) {
             boolean isListSingleType = expressionTypeChecker.isAllElementsHaveSameType((ListType) listType);
             if (!isListSingleType) {
@@ -415,7 +411,6 @@ public class TypeChecker extends Visitor<Void> {
             }
 
         } else if (!(listType instanceof NoType)){
-            //todo getLine bayad az list bashe ya az foreach
             foreachStmt.addError(new ForeachCantIterateNoneList(foreachStmt.getLine()));
         }
 
@@ -436,7 +431,6 @@ public class TypeChecker extends Visitor<Void> {
         update.accept(this);
         Type conditionType = condition.accept(expressionTypeChecker);
         if (!(expressionTypeChecker.isSubtype(conditionType, new BoolType()))) {
-            //todo nemidunim ke az conditionalStmt getLine konim ya az contion
             forStmt.addError(new ConditionNotBool(forStmt.getLine()));
         }
         body.accept(this);
