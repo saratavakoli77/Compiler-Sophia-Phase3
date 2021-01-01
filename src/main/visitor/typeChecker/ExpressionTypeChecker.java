@@ -151,17 +151,17 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             return true;
         }
 
-        if (subType instanceof ClassType && superType instanceof NullType) {
-            return true;
-        }
+//        if (subType instanceof ClassType && superType instanceof NullType) {
+//            return false;
+//        }
 
         if (subType instanceof NullType && superType instanceof FptrType) {
             return true;
         }
 
-        if (subType instanceof FptrType && superType instanceof NullType) {
-            return true;
-        }
+//        if (subType instanceof FptrType && superType instanceof NullType) {
+//            return false;
+//        }
 
         if (subType instanceof ClassType && superType instanceof ClassType) {
             return isClassSubtype((ClassType) subType, (ClassType) superType);
@@ -227,9 +227,9 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         Type firstElementType = elementNameTypes.get(0).getType();
         for (ListNameType listNameType : elementNameTypes) {
             Type nameType = listNameType.getType();
-            if (firstElementType instanceof ClassType && nameType instanceof NullType) {
-                continue;
-            }
+//            if (firstElementType instanceof ClassType && nameType instanceof NullType) {
+//                continue;
+//            }
 //            if (!firstElementType.toString().equals(nameType.getType().toString())) {
             if (!(
                     firstElementType instanceof NoType ||
@@ -257,7 +257,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     //2=
 
-    public Type findMember(String memberName) {
+    public Type findMember(String memberName, String className) {
         try {
             MethodSymbolTableItem methodSymbolTableItem = (MethodSymbolTableItem) currentSymbolTable.getItem(MethodSymbolTableItem.START_KEY + memberName, true);
             hasSeenNoneLValue = true;
@@ -271,6 +271,12 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 }
                 return fieldType;
             } catch (ItemNotFoundException e2) {
+                if (className.equals(memberName)) {
+                    FptrType constructor = new FptrType();
+                    constructor.setReturnType(new NullType());
+                    hasSeenNoneLValue = true;
+                    return constructor;
+                }
                 return null;
             }
         }
@@ -294,7 +300,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             classSymbolTable = classSymbolTableItem.getClassSymbolTable();
             currentSymbolTable = classSymbolTable;
             String memberNameStr = ((Identifier) memberName).getName();
-            Type memberNameType = findMember(memberNameStr);
+            Type memberNameType = findMember(memberNameStr, classId.getName());
             if (memberNameType == null) {
                 objectOrListMemberAccess.addError(new MemberNotAvailableInClass(objectOrListMemberAccess.getLine(), memberNameStr, classId.getName()));
                 return new NoType();
@@ -439,7 +445,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             if (isFirstOperandNoType || isSecondOperandNoType) {
                 isExpressionCorrect = false;
             }
-            if (!isSubtype(secondOperandType, firstOperandType)) {
+            if (!isSubtype(secondOperandType, firstOperandType) && !(firstOperandType instanceof NoType)) {
                 binaryExpression.addError(new UnsupportedOperandType(binaryExpression.getLine(), binaryOperator.name()));
                 isExpressionCorrect = false;
             }

@@ -1,0 +1,32 @@
+class A {
+
+    def void f2() {
+        l: list(4 # A);
+        it: A;
+        l = [null, new A(), null, new A()];
+        foreach (it in l) {
+
+        }
+
+        foreach (it in [null, new A(), null, new A()]) {
+
+        }
+
+    }
+
+    def int f3() {
+
+    }
+
+}
+
+class Main {
+    def Main () {
+        a: A;
+        l: list(3 # int);
+        a = null;
+        a.f2();
+        null = a;
+        l[a.f3()] = 4;
+    }
+}

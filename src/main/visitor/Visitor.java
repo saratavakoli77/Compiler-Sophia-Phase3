@@ -20,10 +20,13 @@ import main.ast.nodes.statement.loop.ForeachStmt;
 import main.ast.types.Type;
 import main.ast.types.single.ClassType;
 import main.symbolTable.SymbolTable;
+import main.symbolTable.items.ClassSymbolTableItem;
+import main.symbolTable.items.SymbolTableItem;
 
 public class Visitor<T> implements IVisitor<T> {
 
     public static SymbolTable currentSymbolTable;
+//    public static ClassSymbolTableItem currentSymbolTable;
 
     public static ClassDeclaration currentClassDeclaration;
 

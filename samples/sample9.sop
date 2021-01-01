@@ -1,0 +1,27 @@
+class A {
+    def void f () {
+
+    }
+
+    def void f2 () {
+      a: int;
+      b: string;
+      a = this.f() = 2;
+      b = this.f() = 2;
+    }
+
+    def void f3 () {
+      a: string;
+      foreach(a in [1, true + 1]) {
+
+      }
+      this = 2;
+    }
+
+}
+
+class Main {
+    def Main () {
+
+    }
+}

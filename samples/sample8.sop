@@ -1,0 +1,78 @@
+class C {
+    i: int;
+}
+
+class B {
+    c : C;
+    def B () { return new B(); }
+}
+class A extends B {
+    b: int;
+    b2: B;
+    //A: int;
+    //def A(a: int) {
+
+    //}
+    //def int A() {
+
+    //}
+    def void f2() {
+        l: list(4 # A);
+        l2: list(B, A, B);
+        it: A;
+        it2: B;
+        l = [null, new A(), null, new A()];
+        l2 = [new A(), new A(), new B()];
+        foreach (it in l) {
+
+        }
+
+        foreach (it2 in l2) {
+
+        }
+
+        foreach (it in this.f3(1)) {
+
+        }
+
+
+
+    }
+
+    def void f3(a: int) {
+        this.A();
+    }
+
+    def void f5() {
+        a: int;
+        a = this.f3(1) = 2;
+    }
+
+    def void f4() {
+        a: list(list(0 # int), int);
+        b: list(list(1 # int), int);
+        b = a;
+    }
+
+}
+
+class Main {
+    def Main () {
+        a: A;
+        a2: A;
+        b: B;
+        m: Main;
+        a = new A();
+        a.A();
+        a.A(1);
+        print(a.b);
+        m = new Main();
+        a.f3(true + 2);
+        if (a == b) {
+
+        }
+        print(a.b2.c.i + 1);
+        a2.f4();
+        print(a2.c.i + 3);
+    }
+}

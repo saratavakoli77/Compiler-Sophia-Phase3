@@ -313,7 +313,9 @@ public class TypeChecker extends Visitor<Void> {
 
         if (hasSeenNoneLValue) {
             assignmentStmt.addError(new LeftSideNotLvalue(assignmentStmt.getLine()));
-        } else if (!(isLValueNoType || isRValueNoType || expressionTypeChecker.isSubtype(rValueType, lValueType))) {
+        }
+
+        if (!(isLValueNoType || isRValueNoType || expressionTypeChecker.isSubtype(rValueType, lValueType))) {
             assignmentStmt.addError(new UnsupportedOperandType(assignmentStmt.getLine(), BinaryOperator.assign.name()));
         }
 
